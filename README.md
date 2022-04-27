@@ -4,6 +4,16 @@ This little program acts as a http proxy for ElasticSearch.
 
 ![image](elasticproxy.svg)
 
+## TODO
+
+- [ ] Backup to Kafka
+- [ ] WAL log and recover
+- [ ] Primary timeout
+- [ ] Backup reties
+- [ ] YAML config file
+
+## build, start
+
 1. build: `make install`
 2. initialize: `elasticproxy -init` (this will create ctl shell script for convenience of startup or stop)
 3. start [httplive](https://github.com/bingoohuang/httplive), for backup mocking: `httplive -l`
