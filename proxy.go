@@ -84,6 +84,8 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if _, ok := rsp.Header[ContentLengthKey]; !ok && rsp.ContentLength > 0 {
 		w.Header().Add(ContentLengthKey, fmt.Sprintf("%d", rsp.ContentLength))
 	}
+
+	status = rsp.StatusCode
 	w.WriteHeader(rsp.StatusCode)
 	if _, err := w.Write(data); err != nil {
 		log.Printf("write data failed: %v", err)
