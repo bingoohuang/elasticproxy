@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bingoohuang/gg/pkg/ctl"
 	"github.com/bingoohuang/gg/pkg/fla9"
+	"github.com/bingoohuang/gg/pkg/ss"
 	"github.com/bingoohuang/golog"
 	"log"
 	"net/http"
@@ -32,10 +33,11 @@ func main() {
 		log.Fatalf("Invalid URL %q: %s", cliArgs.a, err)
 	}
 
-	backups := make([]*url.URL, len(cliArgs.b))
-	for i, b := range cliArgs.b {
-		if backups[i], err = url.Parse(b); err != nil {
-			log.Fatalf("Invalid URL %q: %s", b, err)
+	for _, b := range cliArgs.b {
+		if ss.HasPrefix(b, "http:", "https:") {
+			if _, err = url.Parse(b); err != nil {
+				log.Fatalf("Invalid URL %q: %s", b, err)
+			}
 		}
 	}
 
@@ -47,7 +49,7 @@ func main() {
 		ResponseHeaderTimeout: 15 * time.Second,
 	}
 
-	proxy := CreateElasticProxy(primaryElasticURL, backups)
+	proxy := CreateElasticProxy(primaryElasticURL, cliArgs.b)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", cliArgs.port), proxy); err != nil {
 		log.Fatalf("ListenAndServe failed: %v", err)
 	}
