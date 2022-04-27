@@ -1,6 +1,6 @@
 # elasticproxy
 
-This little program acts as a proxy for ElasticSearch.
+This little program acts as a http proxy for ElasticSearch.
 
 ![image](elasticproxy.svg)
 
