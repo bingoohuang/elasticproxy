@@ -10,7 +10,7 @@ This little program acts as a http proxy for ElasticSearch.
 - [ ] Primary timeout
 - [ ] Backup reties
 - [ ] Loop back avoiding
-- [ ] Kafka consuming to replay elastic write events
+- [x] Kafka consuming to replay elastic write events 2022-04-28
 - [x] YAML config file 2022-04-28
 - [x] Backup to Kafka 2022-04-28
 
@@ -20,7 +20,7 @@ This little program acts as a http proxy for ElasticSearch.
 2. initialize: `elasticproxy -init` (this will create ctl shell script for convenience of startup or stop)
 3. start [httplive](https://github.com/bingoohuang/httplive), for backup mocking: `httplive -l`
    , [download httplive](http://7.d5k.co/httplive/dl/)
-4. edit the created conf.yml file at the current working directory
+4. edit the created conf.yml file at the current working directory, [example](initassets/conf.yml)
 5. start: `./ctl start`
 6. tail log: `./ctl tail`
 

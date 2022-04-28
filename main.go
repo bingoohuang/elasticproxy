@@ -1,15 +1,14 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
-	"github.com/bingoohuang/elasticproxy/pkg/backup/rest"
+	"github.com/bingoohuang/elasticproxy/pkg/process"
+	sigx "github.com/bingoohuang/gg/pkg/sigx"
+
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/gg/pkg/ctl"
 	"github.com/bingoohuang/gg/pkg/fla9"
@@ -26,19 +25,25 @@ func main() {
 
 	c, err := model.ParseConfFile(*confFile)
 	if err != nil {
-		fmt.Printf("failed to parse configuration, error: %v", err)
-		os.Exit(1)
+		log.Fatalf("parse configuration, failed: %v", err)
 	}
 
-	primary := &rest.Rest{Elastic: c.Primary}
-	if primary.Initialize() != nil {
-		log.Fatalf("Initialize primary failed: %v", err)
+	ctx, _ := sigx.RegisterSignals(nil)
+	sigx.RegisterSignalProfile()
+
+	destinations, err := process.CreateDestinations(ctx, c)
+	if err != nil {
+		log.Fatalf("create destinations failed: %v", err)
 	}
 
-	proxy := CreateElasticProxy(context.Background(), primary, c)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", c.Port), proxy); err != nil {
-		log.Fatalf("ListenAndServe failed: %v", err)
+	sources, err := process.CreateSources(c)
+	if err != nil {
+		log.Fatalf("create sources failed: %v", err)
 	}
+
+	ch := make(chan model.Bean, c.ChanSize)
+	sources.GoStartup(ctx, destinations.Primaries, ch)
+	destinations.Startup(ctx, ch)
 }
 
 func init() {

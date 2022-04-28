@@ -1,42 +1,42 @@
-package kaf
+package dest
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/jsoni"
-	"github.com/bingoohuang/jj"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"strings"
-
-	"github.com/bingoohuang/elasticproxy/pkg/model"
-	"github.com/bingoohuang/gg/pkg/ginx"
-	"github.com/bingoohuang/gg/pkg/ss"
 
 	"github.com/Shopify/sarama"
+	"github.com/bingoohuang/elasticproxy/pkg/model"
+	"github.com/bingoohuang/elasticproxy/pkg/util"
+	"github.com/bingoohuang/gg/pkg/ginx"
+	"github.com/bingoohuang/gg/pkg/ss"
 )
 
 type Kafka struct {
-	model.Kafka
+	model.KafkaDestination
 
 	producer *Producer
+	util.EvalLabels
 }
 
 func (d *Kafka) Name() string {
 	return fmt.Sprintf("kafka")
 }
 
-func (d *Kafka) Initialize() error {
+func (d *Kafka) Initialize(context.Context) error {
+	var err error
+	d.EvalLabels, err = util.ParseLabelsExpr(d.LabelEval)
+	if err != nil {
+		return err
+	}
+
 	if len(d.Brokers) == 0 {
 		return fmt.Errorf("brokers must be specified")
 	}
 
 	d.WarnSize = ss.Ori(d.WarnSize, 3*1024*1024) // 3 MiB
 
-	// Apache Kafka: Topic Naming Conventions
+	// Apache KafkaDestination: Topic Naming Conventions
 	// https://devshawn.com/blog/apache-kafka-topic-naming-conventions/
 	// <data-center>.<domain>.<classification>.<description>.<version>
 
@@ -50,31 +50,8 @@ func (d *Kafka) Initialize() error {
 	return nil
 }
 
-type ReqBean struct {
-	Host       string
-	RemoteAddr string
-	Method     string
-	URL        string
-	Header     http.Header
-	Body       interface{}
-}
-
-func (d *Kafka) Write(ctx context.Context, bean model.BackupBean) error {
-	rb := ReqBean{
-		Host:       bean.Req.Host,
-		RemoteAddr: bean.Req.RemoteAddr,
-		Method:     bean.Req.Method,
-		URL:        bean.Req.RequestURI,
-		Header:     bean.Req.Header,
-	}
-
-	if d.RawBody && jj.ParseBytes(bean.Body).IsObject() {
-		rb.Body = jsoni.RawMessage(bean.Body)
-	} else {
-		rb.Body = string(bean.Body)
-	}
-
-	vv, err := ginx.JsoniConfig.Marshal(ctx, rb)
+func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
+	vv, err := ginx.JsoniConfig.Marshal(ctx, bean)
 	if err != nil {
 		log.Printf("marshaling json %+v failed: %v", vv, err)
 	}
@@ -108,12 +85,7 @@ type ProducerConfig struct {
 	Brokers []string
 	Codec   string
 
-	TlsConfig
-}
-
-type TlsConfig struct {
-	CaFile, CertFile, KeyFile string
-	InsecureSkipVerify        bool
+	model.TlsConfig
 }
 
 type PublishResponse struct {
@@ -169,16 +141,16 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 	// Because we don't change the flush settings, sarama will try to produce messages
 	// as fast as possible to keep latency low.
 	sc := sarama.NewConfig()
-	if err := parseVersion(sc, c.Version); err != nil {
+	if err := util.ParseVersion(sc, c.Version); err != nil {
 		return nil, err
 	}
 
-	sc.Producer.Compression = parseCodec(c.Codec)
+	sc.Producer.Compression = util.ParseCodec(c.Codec)
 	sc.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
 	sc.Producer.Retry.Max = 10                   // Retry up to 10 times to produce the message
 	sc.Producer.Return.Successes = true
 	sc.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
-	if tc := c.CreateTlsConfig(); tc != nil {
+	if tc := c.TlsConfig.Create(); tc != nil {
 		sc.Net.TLS.Config = tc
 		sc.Net.TLS.Enable = true
 	}
@@ -193,61 +165,4 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 	}
 
 	return &Producer{SyncProducer: p}, nil
-}
-
-func (tc TlsConfig) CreateTlsConfig() *tls.Config {
-	if tc.CertFile == "" || tc.KeyFile == "" || tc.CaFile == "" {
-		// will be nil by default if nothing is provided
-		return nil
-	}
-
-	cert, err := tls.LoadX509KeyPair(tc.CertFile, tc.KeyFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	caCert, err := ioutil.ReadFile(tc.CaFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(caCert)
-	return &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		RootCAs:            pool,
-		InsecureSkipVerify: tc.InsecureSkipVerify,
-	}
-}
-
-func parseVersion(config *sarama.Config, version string) error {
-	if version == "" {
-		return nil
-	}
-
-	v, err := sarama.ParseKafkaVersion(version)
-	if err != nil {
-		return fmt.Errorf("parsing Kafka version error: %w", err)
-	}
-
-	config.Version = v
-	return nil
-}
-
-func parseCodec(codec string) sarama.CompressionCodec {
-	switch l := strings.ToLower(strings.TrimSpace(codec)); l {
-	case "none":
-		return sarama.CompressionNone
-	case "gzip":
-		return sarama.CompressionGZIP
-	case "snappy":
-		return sarama.CompressionSnappy
-	case "lz4":
-		return sarama.CompressionLZ4
-	case "zstd":
-		return sarama.CompressionZSTD
-	default:
-		log.Printf("W! unknown compression codec %s", codec)
-		return sarama.CompressionNone
-	}
 }

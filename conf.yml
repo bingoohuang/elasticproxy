@@ -1,16 +1,47 @@
 ---
-port: 2900
-chanSize: 10
-primary:
-  url: http://127.0.0.1:9200/
-backups:
-  - url: http://127.0.0.1:5003/backup
-kafkas:
-  - topic: elastic.backup2
-    version: 2.5.1
-    # gzip snappy lz4 zstd
-    codec: none
-    # 将请求体当做二级 JSON
-    rawBody: true
-    brokers:
-      - localhost:9092
+
+# 备份请求缓冲区大小，0 时阻塞
+chanSize: 0
+source:
+  proxies:
+    - port: 2900
+      disabled: false
+      labels:
+        SRC: PROXY
+  kafkas:
+    - version: 2.5.1
+      disabled: false
+      brokers:
+        - localhost:9092
+      # kafka消费者主题列表
+      topics:
+        - elastic.bb06
+      # kafka消费组
+      group: elastic.bb01
+      # 是否从最新偏移量消费
+      newest: false
+      # 消费组重平衡 Rebalance 策略，sticky,roundrobin/rr,range，默认range
+      assignor: range
+      labels:
+        SRC: KAFKA
+
+destination:
+  primaries:
+    - url: http://127.0.0.1:9200/
+      labelEval: SRC==PROXY
+    - url: http://127.0.0.1:5003/backup
+      labelEval: SRC==KAFKA
+
+  rests:
+    - url: http://127.0.0.1:5003/backup
+      disabled: false
+      labelEval: SRC==PROXY
+  kafkas:
+    - topic: elastic.bb06
+      disabled: false
+      labelEval: SRC==PROXY
+      version: 2.5.1
+      # gzip snappy lz4 zstd
+      codec: none
+      brokers:
+        - localhost:9092

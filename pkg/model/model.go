@@ -2,48 +2,104 @@ package model
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/bingoohuang/elasticproxy/pkg/util"
+
 	"github.com/bingoohuang/gg/pkg/yaml"
 )
+
+type Initializer interface {
+	Initialize(ctx context.Context) error
+}
+
+type NameAware interface {
+	Name() string
+}
+
+type Bean struct {
+	Labels     map[string]string
+	Host       string
+	RemoteAddr string
+	Method     string
+	RequestURI string
+	Header     http.Header
+	Body       json.RawMessage
+}
 
 type BackupBean struct {
 	Body []byte
 	Req  *http.Request
 }
 
-type Initializer interface {
-	Initialize() error
-}
-
 type BackupWriter interface {
-	Name() string
-	Write(ctx context.Context, v BackupBean) error
+	util.EvalLabels
+	NameAware
+	Write(ctx context.Context, v Bean) error
 }
 
 type Elastic struct {
-	Disabled bool
-	URL      string
+	URL string
+
+	Disabled  bool
+	LabelEval string
 }
 
-type Kafka struct {
+type ProxySource struct {
+	Port int
+
 	Disabled bool
-	RawBody  bool
+	Labels   map[string]string
+}
+
+func (p ProxySource) GetLabels() map[string]string { return p.Labels }
+
+type KafkaSource struct {
+	Version  string
+	Brokers  []string
+	Topics   []string
+	Group    string
+	Assignor string
+	Newest   bool
+	WarnSize int
+
+	Disabled bool
+	Labels   map[string]string
+}
+
+func (p KafkaSource) GetLabels() map[string]string { return p.Labels }
+
+type KafkaDestination struct {
 	Version  string
 	Brokers  []string
 	Topic    string
 	Codec    string
 	WarnSize int
+
+	Disabled  bool
+	LabelEval string
 }
 
 type Config struct {
-	Port     int
 	ChanSize int
-	Primary  Elastic
-	Backups  []Elastic
-	Kafkas   []Kafka
+
+	Source struct {
+		Proxies []ProxySource
+		Kafkas  []KafkaSource
+	}
+
+	Destination struct {
+		Primaries []Elastic
+		Rests     []Elastic
+		Kafkas    []KafkaDestination
+	}
 }
 
 func ParseConfFile(confFile string) (*Config, error) {
@@ -58,4 +114,34 @@ func ParseConfFile(confFile string) (*Config, error) {
 	}
 
 	return ci, nil
+}
+
+type TlsConfig struct {
+	CaFile, CertFile, KeyFile string
+	InsecureSkipVerify        bool
+}
+
+func (tc TlsConfig) Create() *tls.Config {
+	if tc.CertFile == "" || tc.KeyFile == "" || tc.CaFile == "" {
+		// will be nil by default if nothing is provided
+		return nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(tc.CertFile, tc.KeyFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	caCert, err := ioutil.ReadFile(tc.CaFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caCert)
+	return &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		RootCAs:            pool,
+		InsecureSkipVerify: tc.InsecureSkipVerify,
+	}
 }
