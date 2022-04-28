@@ -8,7 +8,7 @@ This little program acts as a http proxy for ElasticSearch.
 
 - [ ] WAL log and recover
 - [ ] Primary timeout
-- [ ] Backup reties
+- [ ] Backup retries
 - [ ] Loop back avoiding
 - [x] Kafka consuming to replay elastic write events 2022-04-28
 - [x] YAML config file 2022-04-28
@@ -35,7 +35,7 @@ Usage of elasticproxy:
 ```
 
 ```sh
-$ ./ctl tail    
+$ ./ctl tail
 2022-04-28 11:19:40.713 [INFO ] 34444 --- [1    ] [-]  : log file created:~/logs/elasticproxy/elasticproxy.log
 2022-04-28 11:19:43.051 [INFO ] 34444 --- [26   ] [-]  : {"direction":"primary","duration":"25.07109ms","method":"POST","path":"/person/doc","remote_addr":"127.0.0.1:51963","status":201,"target":"http://127.0.0.1:9200/person/doc"}
 2022-04-28 11:19:43.053 [INFO ] 34444 --- [25   ] [-]  : {"direction":"backup","duration":"2.400444ms","status":200,"target":"http://127.0.0.1:5003/backup/person/doc"}
