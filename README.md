@@ -9,6 +9,8 @@ This little program acts as a http proxy for ElasticSearch.
 - [ ] WAL log and recover
 - [ ] Primary timeout
 - [ ] Backup reties
+- [ ] Loop back avoiding
+- [ ] Kafka consuming to replay elastic write events
 - [x] YAML config file 2022-04-28
 - [x] Backup to Kafka 2022-04-28
 
