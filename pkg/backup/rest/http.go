@@ -21,7 +21,7 @@ type Rest struct {
 }
 
 func (b *Rest) Name() string {
-	return fmt.Sprintf("elastic backup %s", b.U.String())
+	return fmt.Sprintf("elastic %s", b.U.String())
 }
 
 func (b *Rest) Initialize() error {

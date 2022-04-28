@@ -1,5 +1,7 @@
 ---
 port: 2900
+# 备份请求缓冲区大小，0 时阻塞
+chanSize: 0
 primary:
   url: http://127.0.0.1:9200/
 backups:
@@ -12,6 +14,6 @@ kafkas:
     # gzip snappy lz4 zstd
     codec: none
     # 将请求体当做二级 JSON
-    rawbody: true
+    rawBody: true
     brokers:
       - localhost:9092

@@ -39,10 +39,11 @@ type Kafka struct {
 }
 
 type Config struct {
-	Port    int
-	Primary Elastic
-	Backups []Elastic
-	Kafkas  []Kafka
+	Port     int
+	ChanSize int
+	Primary  Elastic
+	Backups  []Elastic
+	Kafkas   []Kafka
 }
 
 func ParseConfFile(confFile string) (*Config, error) {

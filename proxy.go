@@ -134,7 +134,7 @@ func createBackups(ctx context.Context, c *model.Config) chan model.BackupBean {
 	}
 
 	if len(beans) > 0 {
-		ch := make(chan model.BackupBean)
+		ch := make(chan model.BackupBean, c.ChanSize)
 		go backupProcess(ctx, beans, ch)
 		return ch
 	}

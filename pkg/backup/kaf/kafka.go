@@ -26,7 +26,7 @@ type Kafka struct {
 }
 
 func (d *Kafka) Name() string {
-	return fmt.Sprintf("backup to kafka")
+	return fmt.Sprintf("kafka")
 }
 
 func (d *Kafka) Initialize() error {
