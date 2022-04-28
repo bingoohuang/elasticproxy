@@ -1,4 +1,4 @@
-version: '2.2'
+version: '3.7'
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
@@ -14,12 +14,8 @@ services:
       memlock:
         soft: -1
         hard: -1
-    # volumes:
-    #   - esdata1:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
-    networks:
-      - esnet
 
   elasticsearch2:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
@@ -36,10 +32,6 @@ services:
       memlock:
         soft: -1
         hard: -1
-    # volumes:
-    #   - esdata2:/usr/share/elasticsearch/data
-    networks:
-      - esnet
 
   elasticsearch3:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
@@ -56,63 +48,55 @@ services:
       memlock:
         soft: -1
         hard: -1
-    # volumes:
-    #   - esdata3:/usr/share/elasticsearch/data
-    networks:
-      - esnet
-#
-#  kibana:
-#    image: 'docker.elastic.co/kibana/kibana:6.4.2'
-#    container_name: kibana
-#    environment:
-#      SERVER_NAME: kibana.local
-#      ELASTICSEARCH_URL: http://elasticsearch:9200
-#    ports:
-#      - '5601:5601'
-#    networks:
-#      - esnet
-#
-#  headPlugin:
-#    image: 'mobz/elasticsearch-head:5'
-#    container_name: head
-#    ports:
-#      - '9100:9100'
-#    networks:
-#      - esnet
-#
-#  redis:
-#    image: redis:alpine
-#    container_name: redis_db
-#    command: redis-server --appendonly yes
-#    ports:
-#      - 6379:6379
-#    # volumes:
-#    #   - ./data:/data
-#    restart: always
-#    networks:
-#      - esnet
-#  idp:
-#    depends_on:
-#      - redis
-#    image: rediscommander/redis-commander
-#    container_name: redis_comndr
-#    environment:
-#    - REDIS_HOSTS=local:redis:6379
-#    ports:
-#      - 8081:8081
-#    links:
-#      - redis:redis
-#    restart: always
-#    networks:
-#      - esnet
 
-volumes:
-  esdata1:
-    driver: local
-  esdata2:
-    driver: local
-  esdata3:
-    driver: local    
+  #
+  #  kibana:
+  #    image: 'docker.elastic.co/kibana/kibana:6.4.2'
+  #    container_name: kibana
+  #    environment:
+  #      SERVER_NAME: kibana.local
+  #      ELASTICSEARCH_URL: http://elasticsearch:9200
+  #    ports:
+  #      - '5601:5601'
+  #
+  #  headPlugin:
+  #    image: 'mobz/elasticsearch-head:5'
+  #    container_name: head
+  #    ports:
+  #      - '9100:9100'
 
-networks:
-  esnet:
+  #  redis:
+  #    image: redis:alpine
+  #    container_name: redis_db
+  #    command: redis-server --appendonly yes
+  #    ports:
+  #      - 6379:6379
+  #    # volumes:
+  #    #   - ./data:/data
+  #    restart: always
+  #  idp:
+  #    depends_on:
+  #      - redis
+  #    image: rediscommander/redis-commander
+  #    container_name: redis_comndr
+  #    environment:
+  #    - REDIS_HOSTS=local:redis:6379
+  #    ports:
+  #      - 8081:8081
+  #    links:
+  #      - redis:redis
+  #    restart: always
+
+  kafka:
+    image: landoop/fast-data-dev:2.5.1
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+      - "8083:8083"
+      - "2181:2181"
+      - "3030:3030" # UI: http://localhost:3030/
+      - "9581-9585:9581-9585"
+    environment:
+      - ADV_HOST=localhost # Use your 'docker-machine ip' or 'localhost' if linux
+

@@ -4,43 +4,30 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/bingoohuang/elasticproxy/backup/httpbackup"
-	"github.com/bingoohuang/elasticproxy/backup/model"
-	"github.com/bingoohuang/elasticproxy/backup/util"
-	"github.com/bingoohuang/gg/pkg/ginx"
-	"github.com/bingoohuang/gg/pkg/ss"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
+
+	"github.com/bingoohuang/elasticproxy/pkg/backup/kaf"
+	"github.com/bingoohuang/elasticproxy/pkg/backup/rest"
+	"github.com/bingoohuang/elasticproxy/pkg/model"
+	"github.com/bingoohuang/elasticproxy/pkg/util"
+	"github.com/bingoohuang/gg/pkg/ginx"
 )
 
 // ElasticProxy forwards received HTTP calls to another HTTP server.
 type ElasticProxy struct {
-	primary        *url.URL
-	backups        []string
-	backupBeanChan chan model.BackupBean
+	primary    *rest.Rest
+	backupChan chan model.BackupBean
 }
 
 // CreateElasticProxy returns a new elasticProxy object.
-func CreateElasticProxy(elasticURL *url.URL, backups []string) *ElasticProxy {
+func CreateElasticProxy(ctx context.Context, primary *rest.Rest, config *model.Config) *ElasticProxy {
 	p := &ElasticProxy{
-		primary: elasticURL,
-		backups: backups,
-	}
-
-	if len(p.backups) > 0 {
-		p.backupBeanChan = make(chan model.BackupBean)
-		var beans []model.Backup
-		for _, backup := range p.backups {
-			if ss.HasPrefix(backup, "http:", "https:") {
-				beans = append(beans, httpbackup.NewBackup(backup))
-			}
-		}
-
-		go p.backupProcess(beans)
+		primary:    primary,
+		backupChan: createBackups(ctx, config),
 	}
 
 	return p
@@ -49,7 +36,7 @@ func CreateElasticProxy(elasticURL *url.URL, backups []string) *ElasticProxy {
 // ServeHTTP only forwards allowed requests to the real ElasticSearch server.
 func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := 200
-	target := util.JoinURL(p.primary, r.RequestURI)
+	target := util.JoinURL(p.primary.U, r.RequestURI)
 	fields := map[string]interface{}{
 		"remote_addr": r.RemoteAddr,
 		"method":      r.Method,
@@ -96,8 +83,8 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status = rsp.StatusCode
-	if status >= 200 && status < 300 && r.Method == http.MethodPost && p.backupBeanChan != nil {
-		p.backupBeanChan <- model.BackupBean{Req: r, Body: body}
+	if status >= 200 && status < 300 && r.Method == http.MethodPost && p.backupChan != nil {
+		p.backupChan <- model.BackupBean{Req: r, Body: body}
 	}
 
 	data, err := ioutil.ReadAll(rsp.Body)
@@ -112,8 +99,9 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, ok := rsp.Header[ContentLengthKey]; !ok && rsp.ContentLength > 0 {
-		w.Header().Add(ContentLengthKey, fmt.Sprintf("%d", rsp.ContentLength))
+	const k = "Content-Length"
+	if _, ok := rsp.Header[k]; !ok && rsp.ContentLength > 0 {
+		w.Header().Add(k, fmt.Sprintf("%d", rsp.ContentLength))
 	}
 
 	w.WriteHeader(rsp.StatusCode)
@@ -123,12 +111,48 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *ElasticProxy) backupProcess(backups []model.Backup) {
-	for bean := range p.backupBeanChan {
+func createBackups(ctx context.Context, c *model.Config) chan model.BackupBean {
+	var beans []model.BackupWriter
+
+	for _, backup := range c.Backups {
+		if backup.Disabled {
+			continue
+		}
+		restBackup := &rest.Rest{Elastic: backup}
+		if err := restBackup.Initialize(); err != nil {
+			log.Fatalf("initialize elastic backup failed: %v", err)
+		}
+		beans = append(beans, restBackup)
+	}
+
+	for _, k := range c.Kafkas {
+		kafkaBackup := &kaf.Kafka{Kafka: k}
+		if err := kafkaBackup.Initialize(); err != nil {
+			log.Fatalf("initialize elastic backup failed: %v", err)
+		}
+		beans = append(beans, kafkaBackup)
+	}
+
+	if len(beans) > 0 {
+		ch := make(chan model.BackupBean)
+		go backupProcess(ctx, beans, ch)
+		return ch
+	}
+
+	return nil
+}
+
+func backupProcess(ctx context.Context, backups []model.BackupWriter, ch chan model.BackupBean) {
+	for bean := range ch {
 		for _, backup := range backups {
-			backup.BackupOne(bean)
+			start := time.Now()
+			err := backup.Write(ctx, bean)
+			cost := time.Since(start)
+			if err != nil {
+				log.Printf("E! backup %s cost %s failed: %v", backup.Name(), cost, err)
+			} else {
+				log.Printf("backup %s cost %s successfully", backup.Name(), cost)
+			}
 		}
 	}
 }
-
-const ContentLengthKey = "Content-Length"

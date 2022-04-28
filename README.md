@@ -4,13 +4,13 @@ This little program acts as a http proxy for ElasticSearch.
 
 ![image](elasticproxy.svg)
 
-## TODO
+## Features TODO
 
-- [ ] Backup to Kafka
 - [ ] WAL log and recover
 - [ ] Primary timeout
 - [ ] Backup reties
-- [ ] YAML config file
+- [x] YAML config file 2022-04-28
+- [x] Backup to Kafka 2022-04-28
 
 ## build, start
 
@@ -18,29 +18,29 @@ This little program acts as a http proxy for ElasticSearch.
 2. initialize: `elasticproxy -init` (this will create ctl shell script for convenience of startup or stop)
 3. start [httplive](https://github.com/bingoohuang/httplive), for backup mocking: `httplive -l`
    , [download httplive](http://7.d5k.co/httplive/dl/)
-4. start: `./ctl start -b http://127.0.0.1:5003/backup`
-5. tail log: `./ctl tail`
+4. edit the created conf.yml file at the current working directory
+5. start: `./ctl start`
+6. tail log: `./ctl tail`
 
 ## usage
 
 ```sh
 $ elasticproxy -h
 Usage of elasticproxy:
-  -backups (-b) value   backup elastic URLs
-  -fla9 string  Flags config file, a scaffold one will created when it does not exist.
+  -conf (-c) string     config file (default "./conf.yml")
   -init Create initial ctl and exit
-  -port (-p) int        port to listen on (default 2900)
-  -primary (-a) string  primary elastic URL (default "http://127.0.0.1:9200/")
   -version (-v) Create initial ctl and exit
 ```
 
 ```sh
 $ ./ctl tail    
-2022-04-27 17:07:23.604 [INFO ] 16843 --- [1    ] [-]  : log file created:~/logs/elasticproxy/elasticproxy.log
-2022-04-27 17:07:31.155 [INFO ] 16843 --- [23   ] [-]  : {"direction":"primary","duration":"29.512085ms","method":"POST","path":"/person/doc","remote_addr":"127.0.0.1:50693","status":201,"target":"http://127.0.0.1:9200/person/doc"}
-2022-04-27 17:07:31.157 [INFO ] 16843 --- [22   ] [-]  : {"direction":"backup","duration":"2.130054ms","status":200,"target":"http://127.0.0.1:5003/backup/person/doc"}
-2022-04-27 17:07:42.886 [INFO ] 16843 --- [34   ] [-]  : {"direction":"primary","duration":"21.780433ms","method":"GET","path":"/_search","remote_addr":"127.0.0.1:50736","status":200,"target":"http://127.0.0.1:9200/_search"}
-2022-04-27 17:07:43.374 [INFO ] 16843 --- [34   ] [-]  : {"direction":"primary","duration":"3.710797ms","method":"GET","path":"/favicon.ico","remote_addr":"127.0.0.1:50736","status":200,"target":"http://127.0.0.1:9200/favicon.ico"}
+2022-04-28 11:19:40.713 [INFO ] 34444 --- [1    ] [-]  : log file created:~/logs/elasticproxy/elasticproxy.log
+2022-04-28 11:19:43.051 [INFO ] 34444 --- [26   ] [-]  : {"direction":"primary","duration":"25.07109ms","method":"POST","path":"/person/doc","remote_addr":"127.0.0.1:51963","status":201,"target":"http://127.0.0.1:9200/person/doc"}
+2022-04-28 11:19:43.053 [INFO ] 34444 --- [25   ] [-]  : {"direction":"backup","duration":"2.400444ms","status":200,"target":"http://127.0.0.1:5003/backup/person/doc"}
+2022-04-28 11:19:43.054 [INFO ] 34444 --- [25   ] [-]  : backup elastic backup http://127.0.0.1:5003/backup cost 2.606671ms successfully
+2022-04-28 11:19:43.054 [INFO ] 34444 --- [25   ] [-]  : kafka write size: 454, message: {"host":"127.0.0.1:2900","remoteAddr":"127.0.0.1:51963","method":"POST","url":"/person/doc","header":{"Accept":["application/json"],"Accept-Encoding":["gzip, deflate"],"Content-Length":["142"],"Content-Type":["application/json"],"Gurl-Date":["Thu, 28 Apr 2022 03:19:42 GMT"],"User-Agent":["gurl/1.0.0"]},"body":{"addr":"西藏自治区那曲地区羯聵路5254号觪皉小区5单646751199202275103","name":"宋邅槐","sex":"男"}\n},to kafka
+2022-04-28 11:19:43.061 [INFO ] 34444 --- [25   ] [-]  : kafka.produce result &{Partition:0 Offset:6 Topic:elastic.backup}
+2022-04-28 11:19:43.061 [INFO ] 34444 --- [25   ] [-]  : backup backup to kafka cost 7.151284ms successfully
 ```
 
 ## help commands

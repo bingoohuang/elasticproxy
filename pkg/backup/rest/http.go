@@ -1,30 +1,41 @@
-package httpbackup
+package rest
 
 import (
 	"bytes"
 	"context"
-	"github.com/bingoohuang/elasticproxy/backup/model"
-	"github.com/bingoohuang/elasticproxy/backup/util"
-	"github.com/bingoohuang/gg/pkg/ginx"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/bingoohuang/elasticproxy/pkg/model"
+	"github.com/bingoohuang/elasticproxy/pkg/util"
+	"github.com/bingoohuang/gg/pkg/ginx"
 )
 
-type backup struct {
-	URL *url.URL
+type Rest struct {
+	model.Elastic
+	U *url.URL
 }
 
-func NewBackup(backupURL string) model.Backup {
-	u, _ := url.Parse(backupURL)
-	return &backup{URL: u}
+func (b *Rest) Name() string {
+	return fmt.Sprintf("elastic backup %s", b.U.String())
 }
 
-func (b backup) BackupOne(bean model.BackupBean) {
+func (b *Rest) Initialize() error {
+	u, err := url.Parse(b.URL)
+	if err != nil {
+		return err
+	}
+	b.U = u
+	return nil
+}
+
+func (b *Rest) Write(ctx context.Context, bean model.BackupBean) error {
 	status := 0
-	target := util.JoinURL(b.URL, bean.Req.RequestURI)
+	target := util.JoinURL(b.U, bean.Req.RequestURI)
 	fields := map[string]interface{}{
 		"direction": "backup",
 		"target":    target,
@@ -44,10 +55,11 @@ func (b backup) BackupOne(bean model.BackupBean) {
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("client do failed: %v", err)
-		return
+		return err
 	}
 	status = rsp.StatusCode
 	if rsp.Body != nil {
 		_, _ = io.Copy(io.Discard, rsp.Body)
 	}
+	return nil
 }

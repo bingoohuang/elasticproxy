@@ -1,0 +1,15 @@
+---
+port: 2900
+primary:
+  url: http://127.0.0.1:9200/
+backups:
+  - url: http://127.0.0.1:5003/backup
+kafkas:
+  - topic: elastic.backup
+    version: 2.5.1
+    # gzip snappy lz4 zstd
+    codec: none
+    # 将请求体当做二级 JSON
+    rawbody: true
+    brokers:
+      - localhost:9092
