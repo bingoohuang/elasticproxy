@@ -48,7 +48,8 @@ $ ./ctl tail
 ## help commands
 
 1. `docker-compose up && docker-compose rm -fsv`
-1. `jj -gu 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' | gurl POST :2900/person/doc`
+2. `jj -gu 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' | gurl POST :2900/person/doc`
    , [download jj](http://7.d5k.co/httplive/dl/)
-1. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
+3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
    , [download gurl](http://7.d5k.co/httplive/dl/)
+4. elastic search `gurl :9200/person/_search q=宣來芼`

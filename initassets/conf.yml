@@ -28,9 +28,7 @@ source:
 destination:
   primaries:
     - url: http://127.0.0.1:9200/
-      labelEval: SRC==PROXY
-    - url: http://127.0.0.1:5003/backup
-      labelEval: SRC==KAFKA
+      labelEval: SRC==PROXY || SRC==KAFKA
 
   rests:
     - url: http://127.0.0.1:5003/backup

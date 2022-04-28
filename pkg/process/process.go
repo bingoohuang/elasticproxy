@@ -34,10 +34,7 @@ func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.
 		if ok, err := r.Eval(bean.Labels); !ok {
 			if err != nil {
 				log.Printf("%s eval labels failed: %v", r.Name(), err)
-			} else {
-				log.Printf("%s labels do not match", r.Name())
 			}
-
 			continue
 		}
 		if err := r.Write(ctx, bean); err != nil {

@@ -145,7 +145,11 @@ func (c *consumer) writePrimaries(bean model.Bean) {
 func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	target := util.JoinURL(primary.U, bean.RequestURI)
 	req, err := http.NewRequest(bean.Method, target, ioutil.NopCloser(bytes.NewBuffer(bean.Body)))
-	// req.Header = bean.Header
+	for k, vv := range bean.Header {
+		for _, vi := range vv {
+			req.Header.Add(k, vi)
+		}
+	}
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
