@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bingoohuang/gg/pkg/iox"
 	"io"
 	"io/ioutil"
 	"log"
@@ -120,11 +121,14 @@ func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, firs
 
 	log.Printf("rest %s do status: %d", target, rsp.StatusCode)
 
+	if rsp.Body != nil {
+		defer iox.Close(rsp.Body)
+	}
+
 	status = rsp.StatusCode
 	var data []byte
 	if first {
-		data, err = io.ReadAll(rsp.Body)
-		if err != nil {
+		if data, err = io.ReadAll(rsp.Body); err != nil {
 			log.Printf("reading response body failed: %v", err)
 		}
 	} else {
@@ -141,6 +145,7 @@ func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, firs
 			Labels:     p.Labels,
 			Body:       body,
 			Header:     http.Header{},
+			ClusterIds: []string{primary.ClusterID},
 		}
 		rb.Header.Set("Content-Type", req.Header.Get("Content-Type"))
 

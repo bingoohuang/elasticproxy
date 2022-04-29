@@ -32,6 +32,7 @@ type Bean struct {
 	RequestURI string
 	Header     http.Header
 	Body       json.RawMessage
+	ClusterIds []string
 }
 
 type BackupBean struct {

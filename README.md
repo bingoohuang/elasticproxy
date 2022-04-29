@@ -9,7 +9,7 @@ This little program acts as a http proxy for ElasticSearch.
 - [ ] WAL log and recover
 - [ ] Primary timeout
 - [ ] Backup retries
-- [ ] Loop back avoiding
+- [x] Loop back avoiding 2022-04-29, ClusterID included in the kafka bean
 - [x] Kafka consuming to replay elastic write events 2022-04-28
 - [x] YAML config file 2022-04-28
 - [x] Backup to Kafka 2022-04-28
@@ -36,19 +36,19 @@ Usage of elasticproxy:
 
 ```sh
 $ ./ctl tail
-2022-04-28 11:19:40.713 [INFO ] 34444 --- [1    ] [-]  : log file created:~/logs/elasticproxy/elasticproxy.log
-2022-04-28 11:19:43.051 [INFO ] 34444 --- [26   ] [-]  : {"direction":"primary","duration":"25.07109ms","method":"POST","path":"/person/doc","remote_addr":"127.0.0.1:51963","status":201,"target":"http://127.0.0.1:9200/person/doc"}
-2022-04-28 11:19:43.053 [INFO ] 34444 --- [25   ] [-]  : {"direction":"backup","duration":"2.400444ms","status":200,"target":"http://127.0.0.1:5003/backup/person/doc"}
-2022-04-28 11:19:43.054 [INFO ] 34444 --- [25   ] [-]  : backup elastic backup http://127.0.0.1:5003/backup cost 2.606671ms successfully
-2022-04-28 11:19:43.054 [INFO ] 34444 --- [25   ] [-]  : kafka write size: 454, message: {"host":"127.0.0.1:2900","remoteAddr":"127.0.0.1:51963","method":"POST","url":"/person/doc","header":{"Accept":["application/json"],"Accept-Encoding":["gzip, deflate"],"Content-Length":["142"],"Content-Type":["application/json"],"Gurl-Date":["Thu, 28 Apr 2022 03:19:42 GMT"],"User-Agent":["gurl/1.0.0"]},"body":{"addr":"西藏自治区那曲地区羯聵路5254号觪皉小区5单646751199202275103","name":"宋邅槐","sex":"男"}\n},to kafka
-2022-04-28 11:19:43.061 [INFO ] 34444 --- [25   ] [-]  : kafka.produce result &{Partition:0 Offset:6 Topic:elastic.backup}
-2022-04-28 11:19:43.061 [INFO ] 34444 --- [25   ] [-]  : backup backup to kafka cost 7.151284ms successfully
+2022-04-29 12:12:38.509 [INFO ] 16071 --- [82   ] [-]  : rest http://127.0.0.1:9200/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J do status: 201
+2022-04-29 12:12:38.510 [INFO ] 16071 --- [82   ] [-]  : {"direction":"primary","duration":"25.848878ms","method":"POST","path":"/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J","remote_addr":"127.0.0.1:53824","status":201,"target":"/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J"}
+2022-04-29 12:12:38.512 [INFO ] 16071 --- [1    ] [-]  : {"direction":"backup","duration":"2.087094ms","status":200,"target":"http://127.0.0.1:5003/backup/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J"}
+2022-04-29 12:12:38.512 [INFO ] 16071 --- [1    ] [-]  : kafka write size: 397, message: {"labels":{"SRC":"PROXY"},"host":"127.0.0.1:2900","remoteAddr":"127.0.0.1:53824","method":"POST","requestUri":"/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J","header":{"Content-Type":["application/json"]},"body":{"addr":"四川省甘孜藏族自治州鑃纺路3694号睟鯳小区16单元2036室","idcard":"467063198902092332","name":"庄樿迡","sex":"男"},"clusterIds":["28SHI8ckjhQp6oHTaCYTKLbVFxP"]},to kafka
+2022-04-29 12:12:38.518 [INFO ] 16071 --- [61   ] [-]  : kafka.claimed group: elastic.bb01, len: 397, value: {"labels":{"SRC":"PROXY"},"host":"127.0.0.1:2900","remoteAddr":"127.0.0.1:53824","method":"POST","requestUri":"/person/doc/28SMVg28QLnm8zCM0wGCLsZzT6J","header":{"Content-Type":["application/json"]},"body":{"addr":"四川省甘孜藏族自治州鑃纺路3694号睟鯳小区16单元2036室","idcard":"467063198902092332","name":"庄樿迡","sex":"男"},"clusterIds":["28SHI8ckjhQp6oHTaCYTKLbVFxP"]}, time: 2022-04-29 12:12:38.512 +0800 CST, topic: elastic.bb06, offset: 7, partition: 0
+2022-04-29 12:12:38.518 [INFO ] 16071 --- [61   ] [-]  : already wrote to ClusterID 28SHI8ckjhQp6oHTaCYTKLbVFxP, ignoring
+2022-04-29 12:12:38.519 [INFO ] 16071 --- [1    ] [-]  : kafka.produce result &{Partition:0 Offset:7 Topic:elastic.bb06}
 ```
 
 ## help commands
 
 1. `docker-compose up && docker-compose rm -fsv`
-2. `jj -gu 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' | gurl POST :2900/person/doc`
+2. `gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/doc/@ksuid`
    , [download jj](http://7.d5k.co/httplive/dl/)
 3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
    , [download gurl](http://7.d5k.co/httplive/dl/)

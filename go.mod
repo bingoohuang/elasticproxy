@@ -7,6 +7,7 @@ require (
 	github.com/bingoohuang/gg v0.0.0-20220420132852-a92417df3205
 	github.com/bingoohuang/golog v0.0.0-20211112131923-101b7e1b3d4c
 	github.com/bingoohuang/jj v0.0.0-20220420012039-8c935d99e5b7
+	github.com/segmentio/ksuid v1.0.4
 )
 
 require (

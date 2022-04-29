@@ -54,6 +54,9 @@ func CreateDestinations(ctx context.Context, config *model.Config) (*Destination
 		if err := rr.Initialize(ctx); err != nil {
 			return nil, err
 		}
+		if err := rr.InitializePrimary(ctx); err != nil {
+			return nil, err
+		}
 
 		d.Primaries = append(d.Primaries, rr)
 	}

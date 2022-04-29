@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bingoohuang/gg/pkg/iox"
+	"github.com/bingoohuang/jj"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,7 +17,6 @@ import (
 	"github.com/bingoohuang/elasticproxy/pkg/util"
 	"github.com/bingoohuang/gg/pkg/ginx"
 	"github.com/bingoohuang/gg/pkg/ss"
-	"github.com/bingoohuang/jj"
 )
 
 type Kafka struct {
@@ -143,6 +144,11 @@ func (c *consumer) writePrimaries(bean model.Bean) {
 }
 
 func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
+	if ss.AnyOf(primary.ClusterID, bean.ClusterIds...) {
+		log.Printf("already wrote to ClusterID %s, ignoring", primary.ClusterID)
+		return
+	}
+
 	target := util.JoinURL(primary.U, bean.RequestURI)
 	req, err := http.NewRequest(bean.Method, target, ioutil.NopCloser(bytes.NewBuffer(bean.Body)))
 	for k, vv := range bean.Header {
@@ -156,9 +162,13 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 		return
 	}
 
-	data, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		log.Printf("reading response body failed: %v", err)
+	var data []byte
+	if rsp.Body != nil {
+		defer iox.Close(rsp.Body)
+		if data, err = io.ReadAll(rsp.Body); err != nil {
+			log.Printf("reading response body failed: %v", err)
+		}
 	}
 	log.Printf("rest %s do status: %d, response: %s", target, rsp.StatusCode, jj.Ugly(data))
+
 }
