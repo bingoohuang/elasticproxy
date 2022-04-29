@@ -2,12 +2,15 @@
 
 # 备份请求缓冲区大小，0 时阻塞
 chanSize: 0
+
 source:
+
   proxies:
     - port: 2900
       disabled: false
       labels:
         SRC: PROXY
+
   kafkas:
     - version: 2.5.1
       disabled: false
@@ -26,6 +29,7 @@ source:
         SRC: KAFKA
 
 destination:
+
   primaries:
     - url: http://127.0.0.1:9200/
       labelEval: SRC==PROXY || SRC==KAFKA
@@ -34,6 +38,7 @@ destination:
     - url: http://127.0.0.1:5003/backup
       disabled: false
       labelEval: SRC==PROXY
+
   kafkas:
     - topic: elastic.backup
       disabled: false

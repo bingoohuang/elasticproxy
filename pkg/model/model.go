@@ -25,7 +25,7 @@ type NameAware interface {
 }
 
 type Bean struct {
-	Labels     map[string]string
+	Labels     map[string]any
 	Host       string
 	RemoteAddr string
 	Method     string
@@ -57,10 +57,10 @@ type ProxySource struct {
 	Port int
 
 	Disabled bool
-	Labels   map[string]string
+	Labels   map[string]any
 }
 
-func (p ProxySource) GetLabels() map[string]string { return p.Labels }
+func (p ProxySource) GetLabels() map[string]any { return p.Labels }
 
 type KafkaSource struct {
 	Version  string
@@ -72,10 +72,10 @@ type KafkaSource struct {
 	WarnSize int
 
 	Disabled bool
-	Labels   map[string]string
+	Labels   map[string]any
 }
 
-func (p KafkaSource) GetLabels() map[string]string { return p.Labels }
+func (p KafkaSource) GetLabels() map[string]any { return p.Labels }
 
 type KafkaDestination struct {
 	Version  string

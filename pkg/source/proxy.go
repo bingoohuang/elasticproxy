@@ -55,7 +55,7 @@ func (p *ElasticProxy) StopWait() {
 // ServeHTTP only forwards allowed requests to the real ElasticSearch server.
 func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := 200
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"remote_addr": r.RemoteAddr,
 		"method":      r.Method,
 		"path":        r.URL.Path,

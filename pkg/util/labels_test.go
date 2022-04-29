@@ -5,13 +5,15 @@ import "testing"
 // https://github.com/yahoo/vssh/blob/master/query.go
 
 func TestQueryExprEval(t *testing.T) {
-	labels := map[string]string{"POP": "LAX", "OS": "JUNOS"}
+	labels := map[string]any{"POP": "LAX", "OS": "JUNOS", "Weight": 1}
 
 	exprTests := []struct {
 		expr     string
 		expected bool
 	}{
 		{"POP==LAX", true},
+		{"Weight==1", true},
+		{"Weight>=1", true},
 		{"POP!=LAX", false},
 		{"POP==LAX && OS==JUNOS", true},
 		{"POP==LAX && OS!=JUNOS", false},
@@ -34,7 +36,7 @@ func TestQueryExprEval(t *testing.T) {
 		}
 
 		if ok != x.expected {
-			t.Fatalf("expect %t, got %t", x.expected, ok)
+			t.Fatalf("%s expect %t, got %t", x.expr, x.expected, ok)
 		}
 	}
 
@@ -64,7 +66,7 @@ func TestQueryExprEval(t *testing.T) {
 }
 
 func BenchmarkQueryExprEval(b *testing.B) {
-	labels := map[string]string{"POP": "LAX", "OS": "JUNOS"}
+	labels := map[string]any{"POP": "LAX", "OS": "JUNOS"}
 	expr := "POP==LAX"
 
 	for i := 0; i < b.N; i++ {

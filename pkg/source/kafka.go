@@ -101,7 +101,7 @@ type consumer struct {
 	client    sarama.ConsumerGroup
 	topics    []string
 	Primaries []rest.Rest
-	labels    map[string]string
+	labels    map[string]any
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim

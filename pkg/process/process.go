@@ -13,7 +13,7 @@ import (
 type SourceReader interface {
 	StartRead(ctx context.Context, primaries []rest.Rest, ch chan<- model.Bean)
 	StopWait()
-	GetLabels() map[string]string
+	GetLabels() map[string]any
 }
 
 type Destination struct {

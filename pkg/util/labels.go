@@ -2,8 +2,10 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/token"
 	"strconv"
 	"strings"
 )
@@ -20,12 +22,12 @@ const (
 )
 
 type EvalLabels interface {
-	Eval(labels map[string]string) (bool, error)
+	Eval(labels map[string]any) (bool, error)
 }
 
 type trueEvalLabels struct{}
 
-func (trueEvalLabels) Eval(map[string]string) (bool, error) { return true, nil }
+func (trueEvalLabels) Eval(map[string]any) (bool, error) { return true, nil }
 
 var (
 	ErrNotSupportOperator = errors.New("operator doesn't support")
@@ -49,7 +51,7 @@ func ParseLabelsExpr(expr string) (EvalLabels, error) {
 	return &v, nil
 }
 
-func (v *LabelVisitor) Eval(labels map[string]string) (bool, error) {
+func (v *LabelVisitor) Eval(labels map[string]any) (bool, error) {
 	var results []ident
 	i := 0
 
@@ -65,9 +67,9 @@ func (v *LabelVisitor) Eval(labels map[string]string) (bool, error) {
 		}
 
 		if relOpEval(v.idents[i:i+3], labels) {
-			results = append(results, ident{"true", idEvald})
+			results = append(results, ident{value: "true", vType: idEvald})
 		} else {
-			results = append(results, ident{"false", idEvald})
+			results = append(results, ident{value: "false", vType: idEvald})
 		}
 
 		if i+3 < len(v.idents) {
@@ -96,6 +98,7 @@ type LabelVisitor struct {
 
 type ident struct {
 	value string
+	Kind  token.Token
 	vType int
 }
 
@@ -104,7 +107,7 @@ func (v *LabelVisitor) Visit(n ast.Node) ast.Visitor {
 	case *ast.Ident:
 		v.idents = append(v.idents, ident{value: d.Name, vType: idName})
 	case *ast.BasicLit:
-		v.idents = append(v.idents, ident{value: d.Value, vType: idValue})
+		v.idents = append(v.idents, ident{value: d.Value, Kind: d.Kind, vType: idValue})
 	case *ast.BinaryExpr:
 		if d.Op == opAnd || d.Op == opOr {
 			v.idents = append(v.idents, ident{value: d.Op.String(), vType: idLogic})
@@ -135,11 +138,12 @@ func binOpEval(idents *[]ident) (bool, error) {
 			r1, _ := strconv.ParseBool((*idents)[i+1].value)
 			r2, _ := strconv.ParseBool((*idents)[i+2].value)
 
-			if (*idents)[i].value == "&&" {
+			switch (*idents)[i].value {
+			case "&&":
 				(*idents)[i].value = strconv.FormatBool(r1 && r2)
-			} else if (*idents)[i+0].value == "||" {
+			case "||":
 				(*idents)[i].value = strconv.FormatBool(r1 || r2)
-			} else {
+			default:
 				return false, ErrNotSupportOperator
 			}
 
@@ -162,14 +166,36 @@ func binOpEval(idents *[]ident) (bool, error) {
 	}
 }
 
-func relOpEval(idents []ident, labels map[string]string) bool {
-	if idents[0].value == "==" {
-		if _, ok := labels[idents[1].value]; ok {
-			return labels[idents[1].value] == idents[2].value
+func relOpEval(idents []ident, labels map[string]any) bool {
+	labelValue, ok := labels[idents[1].value]
+	if !ok {
+		return false
+	}
+
+	switch idents[2].Kind {
+	case token.INT, token.FLOAT:
+		f1, _ := strconv.ParseInt(fmt.Sprintf("%v", labelValue), 10, 64)
+		f2, _ := strconv.ParseInt(idents[2].value, 10, 64)
+		switch idents[0].value {
+		case "==":
+			return f1 == f2
+		case "!=":
+			return f1 != f2
+		case ">":
+			return f1 > f2
+		case ">=":
+			return f1 >= f2
+		case "<":
+			return f1 < f2
+		case "<=":
+			return f1 <= f2
 		}
-	} else {
-		if _, ok := labels[idents[1].value]; ok {
-			return labels[idents[1].value] != idents[2].value
+	default:
+		switch idents[0].value {
+		case "==":
+			return labelValue == idents[2].value
+		case "!=":
+			return labelValue != idents[2].value
 		}
 	}
 

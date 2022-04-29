@@ -56,7 +56,7 @@ func (b *Rest) Write(_ context.Context, bean model.Bean) error {
 
 	status := 0
 	target := util.JoinURL(b.U, bean.RequestURI)
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"direction": "backup",
 		"target":    target,
 	}
@@ -85,7 +85,7 @@ func (b *Rest) Write(_ context.Context, bean model.Bean) error {
 	return nil
 }
 
-func (b *Rest) MatchLabels(labels map[string]string) bool {
+func (b *Rest) MatchLabels(labels map[string]any) bool {
 	ok, err := b.Eval(labels)
 	if err != nil {
 		log.Printf("eval labels failed: %v", err)
