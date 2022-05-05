@@ -8,8 +8,8 @@ This little program acts as a http proxy for ElasticSearch.
 
 - [ ] WAL log and recover
 - [ ] Primary timeout
-- [x] Verify _bulk api
-- [x] Backup retries
+- [x] Verify _bulk api 2022-05-05
+- [x] Backup retries 2022-05-05
 - [x] Loop back avoiding 2022-04-29, ClusterID included in the kafka bean
 - [x] Kafka consuming to replay elastic write events 2022-04-28
 - [x] YAML config file 2022-04-28
