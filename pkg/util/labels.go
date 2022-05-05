@@ -100,6 +100,8 @@ type ident struct {
 	value string
 	Kind  token.Token
 	vType int
+
+	intValue int64
 }
 
 func (v *LabelVisitor) Visit(n ast.Node) ast.Visitor {
@@ -107,7 +109,13 @@ func (v *LabelVisitor) Visit(n ast.Node) ast.Visitor {
 	case *ast.Ident:
 		v.idents = append(v.idents, ident{value: d.Name, vType: idName})
 	case *ast.BasicLit:
-		v.idents = append(v.idents, ident{value: d.Value, Kind: d.Kind, vType: idValue})
+
+		lit := ident{value: d.Value, Kind: d.Kind, vType: idValue}
+		switch d.Kind {
+		case token.INT, token.FLOAT:
+			lit.intValue, _ = strconv.ParseInt(d.Value, 10, 64)
+		}
+		v.idents = append(v.idents, lit)
 	case *ast.BinaryExpr:
 		if d.Op == opAnd || d.Op == opOr {
 			v.idents = append(v.idents, ident{value: d.Op.String(), vType: idLogic})
@@ -175,20 +183,19 @@ func relOpEval(idents []ident, labels map[string]any) bool {
 	switch idents[2].Kind {
 	case token.INT, token.FLOAT:
 		f1, _ := strconv.ParseInt(fmt.Sprintf("%v", labelValue), 10, 64)
-		f2, _ := strconv.ParseInt(idents[2].value, 10, 64)
 		switch idents[0].value {
 		case "==":
-			return f1 == f2
+			return f1 == idents[2].intValue
 		case "!=":
-			return f1 != f2
+			return f1 != idents[2].intValue
 		case ">":
-			return f1 > f2
+			return f1 > idents[2].intValue
 		case ">=":
-			return f1 >= f2
+			return f1 >= idents[2].intValue
 		case "<":
-			return f1 < f2
+			return f1 < idents[2].intValue
 		case "<=":
-			return f1 <= f2
+			return f1 <= idents[2].intValue
 		}
 	default:
 		switch idents[0].value {
