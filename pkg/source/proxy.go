@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bingoohuang/gg/pkg/ss"
 	"io"
 	"io/ioutil"
 	"log"
@@ -168,7 +169,7 @@ func (p *ElasticProxy) write2(w http.ResponseWriter, r *http.Request, first bool
 	}
 
 	for k, vv := range rsp.Header {
-		if k == "Content-Length" {
+		if ss.AnyOf(k, "Content-Length", "Content-Encoding") {
 			continue
 		}
 		for _, v := range vv {
