@@ -37,7 +37,10 @@ func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.
 			}
 			continue
 		}
-		if err := r.Write(ctx, bean); err != nil {
+
+		if err := model.RetryWrite(ctx, func() error {
+			return r.Write(ctx, bean)
+		}); err != nil {
 			log.Printf("write %s failed: %v", r.Name(), err)
 		}
 	}
@@ -116,20 +119,14 @@ func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<-
 func CreateSources(config *model.Config) (*Source, error) {
 	s := &Source{}
 	for _, item := range config.Source.Proxies {
-		if item.Disabled {
-			continue
+		if !item.Disabled {
+			s.Proxies = append(s.Proxies, &source.ElasticProxy{ProxySource: item})
 		}
-
-		p := &source.ElasticProxy{ProxySource: item}
-		s.Proxies = append(s.Proxies, p)
 	}
 	for _, item := range config.Source.Kafkas {
-		if item.Disabled {
-			continue
+		if !item.Disabled {
+			s.Proxies = append(s.Proxies, &source.Kafka{KafkaSource: item})
 		}
-
-		p := &source.Kafka{KafkaSource: item}
-		s.Proxies = append(s.Proxies, p)
 	}
 
 	return s, nil

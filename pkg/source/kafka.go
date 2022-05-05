@@ -1,15 +1,16 @@
 package source
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/iox"
-	"github.com/bingoohuang/jj"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
+
+	"github.com/bingoohuang/gg/pkg/iox"
+	"github.com/bingoohuang/jj"
 
 	"github.com/Shopify/sarama"
 	"github.com/bingoohuang/elasticproxy/pkg/model"
@@ -138,7 +139,12 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 func (c *consumer) writePrimaries(bean model.Bean) {
 	for _, primary := range c.Primaries {
 		if primary.MatchLabels(c.labels) {
-			c.writePrimary(primary, bean)
+			if err := model.RetryWrite(c.ctx, func() error {
+				c.writePrimary(primary, bean)
+				return nil
+			}); err != nil {
+				log.Printf("retry failed: %v", err)
+			}
 		}
 	}
 }
@@ -150,7 +156,7 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	}
 
 	target := util.JoinURL(primary.U, bean.RequestURI)
-	req, err := http.NewRequest(bean.Method, target, ioutil.NopCloser(bytes.NewBuffer(bean.Body)))
+	req, err := http.NewRequest(bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
 	for k, vv := range bean.Header {
 		for _, vi := range vv {
 			req.Header.Add(k, vi)
@@ -170,5 +176,4 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 		}
 	}
 	log.Printf("rest %s do status: %d, response: %s", target, rsp.StatusCode, jj.Ugly(data))
-
 }

@@ -1,53 +1,85 @@
 version: '3.7'
 services:
+  # Elasticsearch Docker Images: https://www.docker.elastic.co/
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
     container_name: elasticsearch
     environment:
-      - cluster.name=docker-cluster
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - http.cors.enabled=true
-      - http.cors.allow-origin=*
-      - discovery.zen.minimum_master_nodes=2
+      - xpack.security.enabled=false
+      - discovery.type=single-node
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    #    volumes:
+    #      - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
-      - 9200:9200
+      - "9200:9200"
+      - "9300:9300"
 
-  elasticsearch2:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
-    container_name: elasticsearch2
-    environment:
-      - cluster.name=docker-cluster
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "discovery.zen.ping.unicast.hosts=elasticsearch"
-      - http.cors.enabled=true
-      - http.cors.allow-origin=*
-      - discovery.zen.minimum_master_nodes=2
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+  #  kibana:
+  #    container_name: kibana
+  #    image: docker.elastic.co/kibana/kibana:7.4.0
+  #    environment:
+  #      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  #    ports:
+  #      - "5601:5601"
+  #    depends_on:
+  #      - elasticsearch
 
-  elasticsearch3:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
-    container_name: elasticsearch3
-    environment:
-      - cluster.name=docker-cluster
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "discovery.zen.ping.unicast.hosts=elasticsearch"
-      - http.cors.enabled=true
-      - http.cors.allow-origin=*
-      - discovery.zen.minimum_master_nodes=2
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+  #  elasticsearch:
+  #    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+  #    container_name: elasticsearch
+  #    environment:
+  #      - cluster.name=docker-cluster
+  #      - bootstrap.memory_lock=true
+  #      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #      - http.cors.enabled=true
+  #      - http.cors.allow-origin=*
+  #      - discovery.zen.minimum_master_nodes=2
+  #    ulimits:
+  #      memlock:
+  #        soft: -1
+  #        hard: -1
+  #    ports:
+  #      - "9200:9200"
+  #
+  #  elasticsearch2:
+  #    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+  #    container_name: elasticsearch2
+  #    environment:
+  #      - cluster.name=docker-cluster
+  #      - bootstrap.memory_lock=true
+  #      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #      - "discovery.zen.ping.unicast.hosts=elasticsearch"
+  #      - http.cors.enabled=true
+  #      - http.cors.allow-origin=*
+  #      - discovery.zen.minimum_master_nodes=2
+  #    ulimits:
+  #      memlock:
+  #        soft: -1
+  #        hard: -1
+  #
+  #  elasticsearch3:
+  #    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+  #    container_name: elasticsearch3
+  #    environment:
+  #      - cluster.name=docker-cluster
+  #      - bootstrap.memory_lock=true
+  #      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #      - "discovery.zen.ping.unicast.hosts=elasticsearch"
+  #      - http.cors.enabled=true
+  #      - http.cors.allow-origin=*
+  #      - discovery.zen.minimum_master_nodes=2
+  #    ulimits:
+  #      memlock:
+  #        soft: -1
+  #        hard: -1
 
   #
   #  kibana:
@@ -87,16 +119,57 @@ services:
   #      - redis:redis
   #    restart: always
 
-  kafka:
-    image: landoop/fast-data-dev:2.5.1
+  #  kafka:
+  #    image: landoop/fast-data-dev:2.5.1
+  #    ports:
+  #      - "9092:9092"
+  #      - "8081:8081"
+  #      - "8082:8082"
+  #      - "8083:8083"
+  #      - "2181:2181"
+  #      - "3030:3030" # UI: http://localhost:3030/
+  #      - "9581-9585:9581-9585"
+  #    environment:
+  #      - ADV_HOST=localhost # Use your 'docker-machine ip' or 'localhost' if linux
+
+
+  # https://github.com/conduktor/kafka-stack-docker-compose
+
+  zoo1:
+    image: confluentinc/cp-zookeeper:7.0.1
+    hostname: zoo1
+    container_name: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: zoo1:2888:3888
+
+  kafka1:
+    image: confluentinc/cp-kafka:7.0.1
+    hostname: kafka1
+    container_name: kafka1
     ports:
       - "9092:9092"
-      - "8081:8081"
-      - "8082:8082"
-      - "8083:8083"
-      - "2181:2181"
-      - "3030:3030" # UI: http://localhost:3030/
-      - "9581-9585:9581-9585"
+      - "9999:9999"
     environment:
-      - ADV_HOST=localhost # Use your 'docker-machine ip' or 'localhost' if linux
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+    depends_on:
+      - zoo1
 
+#  volumes:
+#    elasticsearch-data:
+#      driver: local

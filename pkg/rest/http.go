@@ -5,19 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/iox"
-	"github.com/bingoohuang/gg/pkg/ss"
-	"github.com/bingoohuang/jj"
-	"github.com/segmentio/ksuid"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
+
+	"github.com/bingoohuang/gg/pkg/codec"
+	"github.com/bingoohuang/gg/pkg/iox"
+	"github.com/bingoohuang/gg/pkg/ss"
+	"github.com/bingoohuang/jj"
+	"github.com/segmentio/ksuid"
 
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/elasticproxy/pkg/util"
-	"github.com/bingoohuang/gg/pkg/ginx"
 )
 
 type Rest struct {
@@ -56,21 +58,23 @@ func (b *Rest) Write(_ context.Context, bean model.Bean) error {
 
 	status := 0
 	target := util.JoinURL(b.U, bean.RequestURI)
-	fields := map[string]any{
-		"direction": "backup",
-		"target":    target,
+	accessLog := model.AccessLog{
+		RemoteAddr: bean.RemoteAddr,
+		Method:     bean.Method,
+		Path:       bean.RequestURI,
+		Direction:  "backup",
+		Target:     target,
 	}
 	startTime := time.Now()
 
 	defer func() {
-		fields["duration"] = time.Now().Sub(startTime).String()
-		fields["status"] = status
+		accessLog.Duration = time.Now().Sub(startTime).String()
+		accessLog.StatusCode = status
 
-		accessLog, _ := ginx.JsoniConfig.MarshalToString(context.Background(), fields)
-		log.Print(accessLog)
+		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
-	req, err := http.NewRequest(bean.Method, target, io.NopCloser(bytes.NewBuffer(bean.Body)))
+	req, err := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
 	rsp, err := util.Client.Do(req)
 	if err != nil {
@@ -134,7 +138,7 @@ func (b *Rest) InitializePrimary(context.Context) error {
 		postRspBody, err = io.ReadAll(post.Body)
 	}
 
-	log.Printf(" create ClusterID, StatusCode: %d, postRspBody: %s ", post.StatusCode, postRspBody)
+	log.Printf("create ClusterID, StatusCode: %d, postRspBody: %s ", post.StatusCode, postRspBody)
 
 	if post.StatusCode != 201 {
 		return fmt.Errorf("failed to create ClusterID at %s, StatusCode: %d, postRspBody: %s ",

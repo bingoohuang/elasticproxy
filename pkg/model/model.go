@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/bingoohuang/gg/pkg/backoff"
 
 	"github.com/bingoohuang/elasticproxy/pkg/util"
 
@@ -20,10 +23,6 @@ type Initializer interface {
 	Initialize(ctx context.Context) error
 }
 
-type NameAware interface {
-	Name() string
-}
-
 type Bean struct {
 	Labels     map[string]any
 	Host       string
@@ -31,7 +30,7 @@ type Bean struct {
 	Method     string
 	RequestURI string
 	Header     http.Header
-	Body       json.RawMessage
+	Body       string
 	ClusterIds []string
 }
 
@@ -42,8 +41,32 @@ type BackupBean struct {
 
 type BackupWriter interface {
 	util.EvalLabels
-	NameAware
+	Name() string
 	Write(ctx context.Context, v Bean) error
+}
+
+var ErrQuit = errors.New("quit")
+
+func RetryWrite(ctx context.Context, f func() error) error {
+	startTime := time.Now()
+
+	b := backoff.WithContext(backoff.NewExponentialBackOff(), ctx) // 创建 backoff 实例，使用指数级 bacckoff 算法
+	operation := func(retryTimes int) error {                      // 需要重试的操作
+		err := f()
+		if err == ErrQuit { // 如果是无法重试的错误，使用 backoff.Permanent 包装，终止重试
+			return backoff.Permanent(err)
+		}
+		return err
+	}
+	notify := func(retryTimes int, err error, d time.Duration) { // 发生重试的时候，通知回调函数
+		if err == nil { // 重试成功
+			log.Printf("W! recovered after retry times %d in %s", retryTimes, time.Since(startTime))
+		} else { // 重试失败
+			log.Printf("E! sleep %s for retry %d for error %v", d, retryTimes, err)
+		}
+	}
+
+	return backoff.RetryNotify(operation, b, notify)
 }
 
 type Elastic struct {
@@ -145,4 +168,15 @@ func (tc TlsConfig) Create() *tls.Config {
 		RootCAs:            pool,
 		InsecureSkipVerify: tc.InsecureSkipVerify,
 	}
+}
+
+type AccessLog struct {
+	RemoteAddr    string `json:",omitempty"`
+	Method        string `json:",omitempty"`
+	Path          string `json:",omitempty"`
+	Target        string
+	Direction     string
+	XForwardedFor string `json:",omitempty"`
+	Duration      string
+	StatusCode    int
 }

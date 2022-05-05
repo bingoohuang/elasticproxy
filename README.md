@@ -8,7 +8,8 @@ This little program acts as a http proxy for ElasticSearch.
 
 - [ ] WAL log and recover
 - [ ] Primary timeout
-- [ ] Backup retries
+- [x] Verify _bulk api
+- [x] Backup retries
 - [x] Loop back avoiding 2022-04-29, ClusterID included in the kafka bean
 - [x] Kafka consuming to replay elastic write events 2022-04-28
 - [x] YAML config file 2022-04-28
@@ -23,6 +24,7 @@ This little program acts as a http proxy for ElasticSearch.
 4. edit the created conf.yml file at the current working directory, [example](initassets/conf.yml)
 5. start: `./ctl start`
 6. tail log: `./ctl tail`
+7. build test: `gurl :2900/person/_bulk -b testdata/bulk.json`
 
 ## usage
 
@@ -49,7 +51,14 @@ $ ./ctl tail
 
 1. `docker-compose up && docker-compose rm -fsv`
 2. `gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/doc/@ksuid`
-   , [download jj](http://7.d5k.co/httplive/dl/)
-3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
    , [download gurl](http://7.d5k.co/httplive/dl/)
+3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
 4. elastic search `gurl :9200/person/_search q=宣來芼`
+
+```sh
+bingoobjca@bogon elasticproxy % cat testdata/bulk.json | jj -gu
+{"index":{"_index":"test","_id":"28jr6LKsyySD86DrIwUONkUGswA"}}
+{"addr":"黑龙江省哈尔滨市崪諣路7451号倞鮮小区17单元2194室","idcard":"825491199903301279","name":"陶諗蛃","sex":"男"}
+{"index":{"_index":"test","_id":"28jr6NCcbfEiTjSBAIyRa0f3zjX"}}
+{"addr":"河南省周口市芰鴔路4159号侜緸小区9单元1033室","idcard":"131471199102232071","name":"堵韹司","sex":"男"}
+```

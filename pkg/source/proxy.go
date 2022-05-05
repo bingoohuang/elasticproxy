@@ -2,19 +2,21 @@ package source
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/iox"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/bingoohuang/gg/pkg/codec"
+	"github.com/bingoohuang/gg/pkg/iox"
+
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/elasticproxy/pkg/rest"
 	"github.com/bingoohuang/elasticproxy/pkg/util"
-	"github.com/bingoohuang/gg/pkg/ginx"
 )
 
 // ElasticProxy forwards received HTTP calls to another HTTP server.
@@ -54,29 +56,26 @@ func (p *ElasticProxy) StopWait() {
 
 // ServeHTTP only forwards allowed requests to the real ElasticSearch server.
 func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	status := 200
-	fields := map[string]any{
-		"remote_addr": r.RemoteAddr,
-		"method":      r.Method,
-		"path":        r.URL.Path,
-		"target":      r.RequestURI,
-		"direction":   "primary",
+	accessLog := model.AccessLog{
+		RemoteAddr: r.RemoteAddr,
+		Method:     r.Method,
+		Path:       r.URL.Path,
+		Direction:  "primary",
 	}
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		fields["x_forwarded_for"] = xff
-	}
+
+	accessLog.XForwardedFor = r.Header.Get("X-Forwarded-For")
 
 	startTime := time.Now()
 	headerWrote := false
+	status := 200
 	defer func() {
-		fields["duration"] = time.Now().Sub(startTime).String()
-		fields["status"] = status
 		if !headerWrote {
 			w.WriteHeader(status)
 		}
+		accessLog.Duration = time.Now().Sub(startTime).String()
+		accessLog.StatusCode = status
 
-		accessLog, _ := ginx.JsoniConfig.MarshalToString(context.Background(), fields)
-		log.Print(accessLog)
+		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
 	if r.Header.Get("Upgrade") == "websocket" {
@@ -97,19 +96,33 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		code, wrote := p.writePrimary(w, r, first, primary, body)
+		code, wrote := p.write1(w, r, first, primary, body)
 		if wrote {
 			headerWrote = true
 		}
 		if first {
 			status = code
 			first = false
+			accessLog.Target = util.JoinURL(primary.U, r.RequestURI)
 		}
 	}
 }
 
-func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte,
-) (status int, dataWrote bool) {
+func (p *ElasticProxy) write1(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte) (status int, dataWrote bool) {
+	if err := model.RetryWrite(p.ctx, func() error {
+		status, dataWrote = p.write2(w, r, first, primary, body)
+		if status >= 200 && status < 300 {
+			return nil
+		}
+		return fmt.Errorf("bad status code: %d", status)
+	}); err != nil {
+		log.Printf("retry failed: %v", err)
+	}
+
+	return
+}
+
+func (p *ElasticProxy) write2(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte) (status int, dataWrote bool) {
 	target := util.JoinURL(primary.U, r.RequestURI)
 	req, err := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
@@ -126,12 +139,25 @@ func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, firs
 	}
 
 	status = rsp.StatusCode
-	var data []byte
-	if first {
-		if data, err = io.ReadAll(rsp.Body); err != nil {
-			log.Printf("reading response body failed: %v", err)
+	var rspBody []byte
+	var bodyReader io.Reader
+	if rsp.Header.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(rsp.Body)
+		if err != nil {
+			log.Printf("gzip read failed: %v", err)
+			return status, false
 		}
+		bodyReader = reader
 	} else {
+		bodyReader = rsp.Body
+	}
+
+	if rspBody, err = io.ReadAll(bodyReader); err != nil {
+		log.Printf("reading response body failed: %v", err)
+	}
+	log.Printf("rsp status: %d, rsp body: %s", status, rspBody)
+
+	if !first {
 		_, _ = io.Copy(io.Discard, rsp.Body)
 		return status, false
 	}
@@ -143,7 +169,7 @@ func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, firs
 			Method:     r.Method,
 			RequestURI: r.RequestURI,
 			Labels:     p.Labels,
-			Body:       body,
+			Body:       string(body),
 			Header:     http.Header{},
 			ClusterIds: []string{primary.ClusterID},
 		}
@@ -164,7 +190,7 @@ func (p *ElasticProxy) writePrimary(w http.ResponseWriter, r *http.Request, firs
 	}
 
 	w.WriteHeader(rsp.StatusCode)
-	if _, err := w.Write(data); err != nil {
+	if _, err := w.Write(rspBody); err != nil {
 		log.Printf("write data failed: %v", err)
 	}
 
