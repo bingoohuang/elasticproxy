@@ -62,3 +62,7 @@ bingoobjca@bogon elasticproxy % cat testdata/bulk.json | jj -gu
 {"index":{"_index":"test","_id":"28jr6NCcbfEiTjSBAIyRa0f3zjX"}}
 {"addr":"河南省周口市芰鴔路4159号侜緸小区9单元1033室","idcard":"131471199102232071","name":"堵韹司","sex":"男"}
 ```
+
+## resources
+
+1. [solrdump/esdump](https://github.com/gobars/solrdump)

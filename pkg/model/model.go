@@ -179,4 +179,5 @@ type AccessLog struct {
 	XForwardedFor string `json:",omitempty"`
 	Duration      string
 	StatusCode    int
+	ResponseBody  string
 }

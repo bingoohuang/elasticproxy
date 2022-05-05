@@ -82,10 +82,13 @@ func (b *Rest) Write(_ context.Context, bean model.Bean) error {
 		return err
 	}
 	status = rsp.StatusCode
-	if rsp.Body != nil {
-		_, _ = io.Copy(io.Discard, rsp.Body)
-		iox.Close(rsp.Body)
+
+	rspBody, err := util.ReadBody(rsp)
+	if err != nil {
+		return err
 	}
+	accessLog.ResponseBody = string(rspBody)
+
 	return nil
 }
 
