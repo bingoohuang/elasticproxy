@@ -97,7 +97,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		code, wrote := p.write1(w, r, first, primary, body, &accessLog)
+		code, wrote := p.invoke(w, r, first, primary, body, &accessLog)
 		if wrote {
 			headerWrote = true
 		}
@@ -109,9 +109,9 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *ElasticProxy) write1(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
-	if err := model.RetryWrite(p.ctx, func() error {
-		status, dataWrote = p.write2(w, r, first, primary, body, accessLog)
+func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
+	if err := model.RetryDo(p.ctx, func() error {
+		status, dataWrote = p.invokeInternal(w, r, first, primary, body, accessLog)
 		if status >= 200 && status < 300 {
 			return nil
 		}
@@ -123,9 +123,13 @@ func (p *ElasticProxy) write1(w http.ResponseWriter, r *http.Request, first bool
 	return
 }
 
-func (p *ElasticProxy) write2(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
+func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
 	target := util.JoinURL(primary.U, r.RequestURI)
-	req, err := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
+	var reqBody io.Reader
+	if len(body) > 0 {
+		reqBody = ioutil.NopCloser(bytes.NewBuffer(body))
+	}
+	req, err := http.NewRequest(r.Method, target, reqBody)
 	req.Header = r.Header
 
 	if primary.Timeout > 0 {

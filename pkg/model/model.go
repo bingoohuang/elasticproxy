@@ -47,7 +47,7 @@ type BackupWriter interface {
 
 var ErrQuit = errors.New("quit")
 
-func RetryWrite(ctx context.Context, f func() error) error {
+func RetryDo(ctx context.Context, f func() error) error {
 	startTime := time.Now()
 
 	b := backoff.WithContext(backoff.NewExponentialBackOff(), ctx) // 创建 backoff 实例，使用指数级 bacckoff 算法

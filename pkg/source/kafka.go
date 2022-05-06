@@ -139,7 +139,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 func (c *consumer) writePrimaries(bean model.Bean) {
 	for _, primary := range c.Primaries {
 		if primary.MatchLabels(c.labels) {
-			if err := model.RetryWrite(c.ctx, func() error {
+			if err := model.RetryDo(c.ctx, func() error {
 				c.writePrimary(primary, bean)
 				return nil
 			}); err != nil {

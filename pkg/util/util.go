@@ -1,15 +1,18 @@
 package util
 
 import (
+	"log"
 	"net/http"
 	"net/url"
-	"path"
 )
 
-func JoinURL(base *url.URL, requestURI string) string {
-	targetURL := *base
-	targetURL.Path = path.Join(targetURL.Path, requestURI)
-	return targetURL.String()
+func JoinURL(base *url.URL, target string) string {
+	u, err := url.Parse(target)
+	if err != nil {
+		log.Printf("parse url %s failed: %s", target, err)
+	}
+
+	return base.ResolveReference(u).String()
 }
 
 var Client = &http.Client{}

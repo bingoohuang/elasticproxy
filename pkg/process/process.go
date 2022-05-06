@@ -38,7 +38,7 @@ func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.
 			continue
 		}
 
-		if err := model.RetryWrite(ctx, func() error {
+		if err := model.RetryDo(ctx, func() error {
 			return r.Write(ctx, bean)
 		}); err != nil {
 			log.Printf("write %s failed: %v", r.Name(), err)
