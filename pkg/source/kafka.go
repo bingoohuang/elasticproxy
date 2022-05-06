@@ -121,23 +121,27 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/master/consumer_group.go#L27-L29
 	for m := range claim.Messages() {
-		valLen := len(m.Value)
-		prefix := ss.If(c.warnSize > 0 && valLen >= c.warnSize, "W!", "[L:15s]")
-		log.Printf("%s kafka.claimed group: %s, len: %d, value: %s, time: %v, topic: %s, offset: %d, partition: %d",
-			prefix, c.group, valLen, m.Value, m.Timestamp, m.Topic, m.Offset, m.Partition)
-
-		var bean model.Bean
-		if err := ginx.JsoniConfig.Unmarshal(c.ctx, m.Value, &bean); err != nil {
-			log.Printf("unmarshal %s failed: %v", m.Value, err)
-		} else {
-			bean.Labels = c.labels
-			c.writePrimaries(bean)
-			c.out <- bean
-		}
+		c.dealMessage(m)
 		session.MarkMessage(m, "")
 	}
 
 	return nil
+}
+
+func (c *consumer) dealMessage(m *sarama.ConsumerMessage) {
+	valLen := len(m.Value)
+	prefix := ss.If(c.warnSize > 0 && valLen >= c.warnSize, "W!", "[L:15s]")
+	log.Printf("%s kafka.claimed group: %s, len: %d, value: %s, time: %v, topic: %s, offset: %d, partition: %d",
+		prefix, c.group, valLen, m.Value, m.Timestamp, m.Topic, m.Offset, m.Partition)
+
+	var bean model.Bean
+	if err := ginx.JsoniConfig.Unmarshal(c.ctx, m.Value, &bean); err != nil {
+		log.Printf("unmarshal %s failed: %v", m.Value, err)
+	} else {
+		bean.Labels = c.labels
+		c.writePrimaries(bean)
+		c.out <- bean
+	}
 }
 
 func (c *consumer) writePrimaries(bean model.Bean) {
