@@ -50,7 +50,7 @@ func (b *Rest) Initialize(context.Context) error {
 	return nil
 }
 
-func (b *Rest) Write(_ context.Context, bean model.Bean) error {
+func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	if ss.AnyOf(b.ClusterID, bean.ClusterIds...) {
 		log.Printf("already wrote to ClusterID %s, ignoring", b.ClusterID)
 		return nil
@@ -76,6 +76,13 @@ func (b *Rest) Write(_ context.Context, bean model.Bean) error {
 
 	req, err := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
+
+	if b.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(ctx, b.Timeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
+
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("client do failed: %v", err)
@@ -101,7 +108,7 @@ func (b *Rest) MatchLabels(labels map[string]any) bool {
 	return ok
 }
 
-func (b *Rest) InitializePrimary(context.Context) error {
+func (b *Rest) InitializePrimary(_ context.Context) error {
 	u := *b.U
 	u.Path = "/elasticproxy/doc/clusterid"
 	target := u.String()

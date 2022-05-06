@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/ss"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/bingoohuang/gg/pkg/ss"
 
 	"github.com/bingoohuang/gg/pkg/codec"
 	"github.com/bingoohuang/gg/pkg/iox"
@@ -126,6 +127,13 @@ func (p *ElasticProxy) write2(w http.ResponseWriter, r *http.Request, first bool
 	target := util.JoinURL(primary.U, r.RequestURI)
 	req, err := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
+
+	if primary.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(p.ctx, primary.Timeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
+
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)

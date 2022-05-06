@@ -25,5 +25,4 @@ func ReadBody(rsp *http.Response) ([]byte, error) {
 		log.Printf("reading response body failed: %v", err)
 	}
 	return rspBody, err
-
 }

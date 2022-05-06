@@ -74,6 +74,7 @@ type Elastic struct {
 
 	Disabled  bool
 	LabelEval string
+	Timeout   time.Duration
 }
 
 type ProxySource struct {

@@ -32,10 +32,12 @@ destination:
 
   primaries:
     - url: http://127.0.0.1:9200/
+      timeout: 3s
 
   rests:
     - url: http://127.0.0.1:5003/backup
       disabled: false
+      timeout: 5s
       labelEval: SRC==PROXY
   kafkas:
     - topic: elastic.bb06

@@ -7,7 +7,7 @@ This little program acts as a http proxy for ElasticSearch.
 ## Features TODO
 
 - [ ] WAL log and recover
-- [ ] Primary timeout
+- [x] HTTPClient(Primary/Rests) timeout 2022-05-06
 - [x] Verify _bulk api 2022-05-05
 - [x] Backup retries 2022-05-05
 - [x] Loop back avoiding 2022-04-29, ClusterID included in the kafka bean

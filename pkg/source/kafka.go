@@ -162,6 +162,13 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 			req.Header.Add(k, vi)
 		}
 	}
+
+	if primary.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(c.ctx, primary.Timeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
+
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
