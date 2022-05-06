@@ -3,9 +3,10 @@ package util
 import (
 	"context"
 	"fmt"
-	"github.com/bingoohuang/gg/pkg/randx"
 	"testing"
 	"time"
+
+	"github.com/bingoohuang/gg/pkg/randx"
 )
 
 type myJob struct {

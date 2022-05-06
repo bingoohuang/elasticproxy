@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bingoohuang/elasticproxy/pkg/process"
-	sigx "github.com/bingoohuang/gg/pkg/sigx"
+	"github.com/bingoohuang/gg/pkg/sigx"
 
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/gg/pkg/ctl"
