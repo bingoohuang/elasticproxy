@@ -42,6 +42,12 @@ func (p *ElasticProxy) StartRead(ctx context.Context, primaries []rest.Rest, ch 
 			p.Primaries = append(p.Primaries, d)
 		}
 	}
+
+	if len(p.Primaries) == 0 {
+		log.Fatalf("There is no primaries for elastic proxy :%d with labels %+v",
+			p.ProxySource.Port, p.ProxySource.Labels)
+	}
+
 	if err := p.server.ListenAndServe(); err != nil {
 		log.Printf("ListenAndServe failed: %v", err)
 	}
@@ -93,10 +99,6 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	first := true
 	for _, primary := range p.Primaries {
-		if !util.MatchLabels(primary, p.Labels) {
-			continue
-		}
-
 		code, wrote := p.invoke(w, r, first, primary, body, &accessLog)
 		if wrote {
 			headerWrote = true
@@ -109,7 +111,9 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
+func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte,
+	accessLog *model.AccessLog,
+) (status int, dataWrote bool) {
 	if err := model.RetryDo(p.ctx, func() error {
 		status, dataWrote = p.invokeInternal(w, r, first, primary, body, accessLog)
 		if status >= 200 && status < 500 {
@@ -123,7 +127,9 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 	return
 }
 
-func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
+func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte,
+	accessLog *model.AccessLog,
+) (status int, dataWrote bool) {
 	target := util.JoinURL(primary.U, r.RequestURI)
 	var reqBody io.Reader
 	if len(body) > 0 {

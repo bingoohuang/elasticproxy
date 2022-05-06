@@ -68,6 +68,10 @@ func (s *Kafka) StartRead(ctx context.Context, primaries []rest.Rest, ch chan<- 
 		}
 	}
 
+	if len(s.cs.Primaries) == 0 {
+		log.Fatalf("There is no primaries for kafka brokers: %s with labels %+v", s.Brokers, s.Labels)
+	}
+
 	s.cs.consume()
 }
 
@@ -138,13 +142,11 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 func (c *consumer) writePrimaries(bean model.Bean) {
 	for _, primary := range c.Primaries {
-		if util.MatchLabels(primary, c.labels) {
-			if err := model.RetryDo(c.ctx, func() error {
-				c.writePrimary(primary, bean)
-				return nil
-			}); err != nil {
-				log.Printf("retry failed: %v", err)
-			}
+		if err := model.RetryDo(c.ctx, func() error {
+			c.writePrimary(primary, bean)
+			return nil
+		}); err != nil {
+			log.Printf("retry failed: %v", err)
 		}
 	}
 }
