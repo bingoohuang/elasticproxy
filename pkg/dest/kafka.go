@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/bingoohuang/gg/pkg/codec"
+
 	"github.com/Shopify/sarama"
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/elasticproxy/pkg/util"
@@ -16,16 +18,15 @@ type Kafka struct {
 	model.KafkaDestination
 
 	producer *Producer
-	util.EvalLabels
+	util.LabelsMatcher
 }
 
-func (d *Kafka) Name() string {
-	return fmt.Sprintf("kafka")
-}
+func (d *Kafka) Hash() string { return util.Hash(d.Brokers...) }
+func (d *Kafka) Name() string { return fmt.Sprintf("kafka") }
 
 func (d *Kafka) Initialize(context.Context) error {
 	var err error
-	d.EvalLabels, err = util.ParseLabelsExpr(d.LabelEval)
+	d.LabelsMatcher, err = util.ParseLabelsExpr(d.LabelEval)
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,7 @@ func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 		return fmt.Errorf("failed to publish len: %d, error %w, message: %s", vLen, err, vv)
 	}
 
-	log.Printf("%s kafka.produce result %+v", prefix, rsp)
+	log.Printf("%s kafka.produce result %s", prefix, codec.Json(rsp))
 	return nil
 }
 

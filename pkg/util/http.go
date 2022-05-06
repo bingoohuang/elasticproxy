@@ -5,6 +5,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+
+	"github.com/bingoohuang/gg/pkg/codec/b64"
+	"github.com/cespare/xxhash/v2"
 )
 
 func ReadBody(rsp *http.Response) ([]byte, error) {
@@ -25,4 +29,17 @@ func ReadBody(rsp *http.Response) ([]byte, error) {
 		log.Printf("reading response body failed: %v", err)
 	}
 	return rspBody, err
+}
+
+func HashURL(u *url.URL) string {
+	return Hash(u.String())
+}
+
+func Hash(s ...string) string {
+	xx := xxhash.New()
+	for _, i := range s {
+		_, _ = xx.Write([]byte(i))
+	}
+	h, _ := b64.EncodeString(string(xx.Sum(nil)), b64.URL, b64.Raw)
+	return h
 }

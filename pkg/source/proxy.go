@@ -38,7 +38,7 @@ func (p *ElasticProxy) StartRead(ctx context.Context, primaries []rest.Rest, ch 
 	p.ch = ch
 	p.done = make(chan struct{})
 	for _, d := range primaries {
-		if d.MatchLabels(p.Labels) {
+		if util.MatchLabels(d, p.Labels) {
 			p.Primaries = append(p.Primaries, d)
 		}
 	}
@@ -93,7 +93,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	first := true
 	for _, primary := range p.Primaries {
-		if !primary.MatchLabels(p.Labels) {
+		if !util.MatchLabels(primary, p.Labels) {
 			continue
 		}
 
@@ -112,7 +112,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte, accessLog *model.AccessLog) (status int, dataWrote bool) {
 	if err := model.RetryDo(p.ctx, func() error {
 		status, dataWrote = p.invokeInternal(w, r, first, primary, body, accessLog)
-		if status >= 200 && status < 300 {
+		if status >= 200 && status < 500 {
 			return nil
 		}
 		return fmt.Errorf("bad status code: %d", status)
@@ -164,7 +164,7 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 		return status, false
 	}
 
-	if status >= 200 && status < 300 && r.Method != http.MethodGet && p.ch != nil {
+	if status >= 200 && status < 300 && !ss.AnyOf(r.Method, http.MethodGet, http.MethodHead) && p.ch != nil {
 		rb := model.Bean{
 			Host:       r.Host,
 			RemoteAddr: r.RemoteAddr,

@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -21,20 +22,29 @@ const (
 	opOr  = 35
 )
 
-type EvalLabels interface {
-	Eval(labels map[string]any) (bool, error)
+func MatchLabels(matcher LabelsMatcher, labels map[string]any) bool {
+	ok, err := matcher.MatchLabels(labels)
+	if err != nil {
+		log.Printf("eval labels failed: %v", err)
+	}
+
+	return ok
+}
+
+type LabelsMatcher interface {
+	MatchLabels(labels map[string]any) (bool, error)
 }
 
 type trueEvalLabels struct{}
 
-func (trueEvalLabels) Eval(map[string]any) (bool, error) { return true, nil }
+func (trueEvalLabels) MatchLabels(map[string]any) (bool, error) { return true, nil }
 
 var (
 	ErrNotSupportOperator = errors.New("operator doesn't support")
 	ErrQuery              = errors.New("query error")
 )
 
-func ParseLabelsExpr(expr string) (EvalLabels, error) {
+func ParseLabelsExpr(expr string) (LabelsMatcher, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
 		return &trueEvalLabels{}, nil
@@ -51,7 +61,7 @@ func ParseLabelsExpr(expr string) (EvalLabels, error) {
 	return &v, nil
 }
 
-func (v *LabelVisitor) Eval(labels map[string]any) (bool, error) {
+func (v *LabelVisitor) MatchLabels(labels map[string]any) (bool, error) {
 	var results []ident
 	i := 0
 

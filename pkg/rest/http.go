@@ -26,17 +26,16 @@ type Rest struct {
 	model.Elastic
 	U *url.URL
 
-	util.EvalLabels
+	util.LabelsMatcher
 	ClusterID string
 }
 
-func (b *Rest) Name() string {
-	return fmt.Sprintf("elastic %s", b.U.String())
-}
+func (b *Rest) Hash() string { return util.HashURL(b.U) }
+func (b *Rest) Name() string { return fmt.Sprintf("elastic %s", b.U.String()) }
 
 func (b *Rest) Initialize(context.Context) error {
 	var err error
-	b.EvalLabels, err = util.ParseLabelsExpr(b.LabelEval)
+	b.LabelsMatcher, err = util.ParseLabelsExpr(b.LabelEval)
 	if err != nil {
 		return err
 	}
@@ -97,15 +96,6 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	accessLog.ResponseBody = string(rspBody)
 
 	return nil
-}
-
-func (b *Rest) MatchLabels(labels map[string]any) bool {
-	ok, err := b.Eval(labels)
-	if err != nil {
-		log.Printf("eval labels failed: %v", err)
-	}
-
-	return ok
 }
 
 func (b *Rest) InitializePrimary(_ context.Context) error {

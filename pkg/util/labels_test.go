@@ -30,7 +30,7 @@ func TestQueryExprEval(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ok, err := v.Eval(labels)
+		ok, err := v.MatchLabels(labels)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func TestQueryExprEval(t *testing.T) {
 	if err != nil {
 		t.Fatal("expect error but got nil")
 	}
-	_, err = v.Eval(labels)
+	_, err = v.MatchLabels(labels)
 	if err == nil {
 		t.Fatal("expect error but got nil")
 	}
@@ -58,7 +58,7 @@ func TestQueryExprEval(t *testing.T) {
 	ops := []string{"&", "+", "<=", "<"}
 	for _, op := range ops {
 		v, _ := ParseLabelsExpr("OS == JUNOS " + op + " POP == LAX")
-		_, err = v.Eval(labels)
+		_, err = v.MatchLabels(labels)
 		if err == nil {
 			t.Fatal("expect error but got nil")
 		}
@@ -75,7 +75,7 @@ func BenchmarkQueryExprEval(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		_, err = v.Eval(labels)
+		_, err = v.MatchLabels(labels)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -39,8 +39,13 @@ type BackupBean struct {
 	Req  *http.Request
 }
 
+type Hasher interface {
+	Hash() string
+}
+
 type BackupWriter interface {
-	util.EvalLabels
+	util.LabelsMatcher
+	Hasher
 	Name() string
 	Write(ctx context.Context, v Bean) error
 }

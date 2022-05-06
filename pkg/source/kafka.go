@@ -63,7 +63,7 @@ func (s *Kafka) StartRead(ctx context.Context, primaries []rest.Rest, ch chan<- 
 	}
 
 	for _, primary := range primaries {
-		if primary.MatchLabels(s.Labels) {
+		if util.MatchLabels(primary, s.Labels) {
 			s.cs.Primaries = append(s.cs.Primaries, primary)
 		}
 	}
@@ -138,7 +138,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 func (c *consumer) writePrimaries(bean model.Bean) {
 	for _, primary := range c.Primaries {
-		if primary.MatchLabels(c.labels) {
+		if util.MatchLabels(primary, c.labels) {
 			if err := model.RetryDo(c.ctx, func() error {
 				c.writePrimary(primary, bean)
 				return nil

@@ -31,7 +31,7 @@ func (d Destination) Startup(ctx context.Context, ch chan model.Bean) {
 
 func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.Bean) {
 	for _, r := range writers {
-		if ok, err := r.Eval(bean.Labels); !ok {
+		if ok, err := r.MatchLabels(bean.Labels); !ok {
 			if err != nil {
 				log.Printf("%s eval labels failed: %v", r.Name(), err)
 			}
