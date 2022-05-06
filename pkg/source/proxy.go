@@ -160,7 +160,7 @@ func (p *ElasticProxy) write2(w http.ResponseWriter, r *http.Request, first bool
 		return status, false
 	}
 
-	if status >= 200 && status < 300 && r.Method == http.MethodPost && p.ch != nil {
+	if status >= 200 && status < 300 && r.Method != http.MethodGet && p.ch != nil {
 		rb := model.Bean{
 			Host:       r.Host,
 			RemoteAddr: r.RemoteAddr,
