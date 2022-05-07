@@ -157,7 +157,7 @@ func (c *consumer) writePrimaries(bean model.Bean) {
 
 func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	if ss.AnyOf(primary.ClusterID, bean.ClusterIds...) {
-		log.Printf("already wrote to ClusterID %s, ignoring", primary.ClusterID)
+		log.Printf("kafka, already wrote to ClusterID %s, ignoring", primary.ClusterID)
 		return
 	}
 

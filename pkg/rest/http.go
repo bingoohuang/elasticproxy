@@ -51,7 +51,7 @@ func (b *Rest) Initialize(context.Context) error {
 
 func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	if ss.AnyOf(b.ClusterID, bean.ClusterIds...) {
-		log.Printf("already wrote to ClusterID %s, ignoring", b.ClusterID)
+		log.Printf("rest, already wrote to ClusterID %s, ignoring", b.ClusterID)
 		return nil
 	}
 
