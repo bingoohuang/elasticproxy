@@ -2,10 +2,12 @@ package util
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/bingoohuang/gg/pkg/codec/b64"
 	"github.com/cespare/xxhash/v2"
@@ -42,4 +44,14 @@ func Hash(s ...string) string {
 	}
 	h, _ := b64.EncodeString(string(xx.Sum(nil)), b64.URL, b64.Raw)
 	return h
+}
+
+func TimeoutInvoke(ctx context.Context, req *http.Request, timeout time.Duration) (*http.Response, error) {
+	if timeout > 0 {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
+
+	return Client.Do(req)
 }

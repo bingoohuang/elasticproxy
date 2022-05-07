@@ -135,14 +135,7 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	target := util.JoinURL(primary.U, r.RequestURI)
 	req, _ := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
-
-	if primary.Timeout > 0 {
-		ctx, cancel := context.WithTimeout(p.ctx, primary.Timeout)
-		defer cancel()
-		req = req.WithContext(ctx)
-	}
-
-	rsp, err := util.Client.Do(req)
+	rsp, err := util.TimeoutInvoke(p.ctx, req, primary.Timeout)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
 		return

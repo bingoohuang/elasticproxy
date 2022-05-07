@@ -75,14 +75,7 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 
 	req, _ := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
-
-	if b.Timeout > 0 {
-		ctx, cancel := context.WithTimeout(ctx, b.Timeout)
-		defer cancel()
-		req = req.WithContext(ctx)
-	}
-
-	rsp, err := util.Client.Do(req)
+	rsp, err := util.TimeoutInvoke(ctx, req, b.Timeout)
 	if err != nil {
 		log.Printf("client do failed: %v", err)
 		return err
