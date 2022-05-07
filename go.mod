@@ -4,11 +4,13 @@ go 1.18
 
 require (
 	github.com/Shopify/sarama v1.32.0
-	github.com/bingoohuang/gg v0.0.0-20220420132852-a92417df3205
+	github.com/bingoohuang/gg v0.0.0-20220507065125-6fc3fdf8b7fe
 	github.com/bingoohuang/golog v0.0.0-20211112131923-101b7e1b3d4c
 	github.com/bingoohuang/jj v0.0.0-20220420012039-8c935d99e5b7
 	github.com/cespare/xxhash/v2 v2.1.1
 	github.com/segmentio/ksuid v1.0.4
+	github.com/stretchr/testify v1.7.1
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
 )
 
 require (
@@ -42,6 +44,7 @@ require (
 	github.com/pbnjay/pixfont v0.0.0-20200714042608-33b744692567 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
@@ -50,4 +53,5 @@ require (
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

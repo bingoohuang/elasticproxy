@@ -73,7 +73,7 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
-	req, err := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
+	req, _ := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
 
 	if b.Timeout > 0 {
@@ -135,7 +135,7 @@ func (b *Rest) InitializePrimary(_ context.Context) error {
 	var postRspBody []byte
 	if post.Body != nil {
 		defer iox.Close(post.Body)
-		postRspBody, err = io.ReadAll(post.Body)
+		postRspBody, _ = io.ReadAll(post.Body)
 	}
 
 	log.Printf("create ClusterID, StatusCode: %d, postRspBody: %s ", post.StatusCode, postRspBody)

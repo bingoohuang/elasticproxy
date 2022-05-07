@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -73,53 +74,54 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	accessLog.XForwardedFor = r.Header.Get("X-Forwarded-For")
 
 	startTime := time.Now()
-	headerWrote := false
-	status := 200
+	rw := &ResponseWriter{ResponseWriter: w}
 	defer func() {
-		if !headerWrote {
-			w.WriteHeader(status)
+		if !rw.DataWritten {
+			w.WriteHeader(accessLog.StatusCode)
 		}
 		accessLog.Duration = time.Now().Sub(startTime).String()
-		accessLog.StatusCode = status
-
 		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
 	if r.Header.Get("Upgrade") == "websocket" {
-		status = http.StatusNotImplemented
-		w.WriteHeader(status)
+		accessLog.StatusCode = http.StatusNotImplemented
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		status = http.StatusInternalServerError
+		accessLog.StatusCode = http.StatusInternalServerError
 		return
 	}
 
-	first := true
-	for _, primary := range p.Primaries {
-		code, wrote := p.invoke(w, r, first, primary, body, &accessLog)
-		if wrote {
-			headerWrote = true
-		}
-		if first {
-			status = code
-			first = false
-			accessLog.Target = util.JoinURL(primary.U, r.RequestURI)
-		}
+	rand.Shuffle(len(p.Primaries), func(i, j int) {
+		p.Primaries[i], p.Primaries[j] = p.Primaries[j], p.Primaries[i]
+	})
+
+	for i, primary := range p.Primaries {
+		p.invoke(rw, r, i == 0, primary, body, &accessLog)
 	}
 }
 
-func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte,
-	accessLog *model.AccessLog,
-) (status int, dataWrote bool) {
+type ResponseWriter struct {
+	http.ResponseWriter
+	DataWritten bool
+}
+
+func (r *ResponseWriter) Write(data []byte) (int, error) {
+	r.DataWritten = true
+	return r.ResponseWriter.Write(data)
+}
+
+func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest,
+	body []byte, accessLog *model.AccessLog,
+) {
 	if err := model.RetryDo(p.ctx, func() error {
-		status, dataWrote = p.invokeInternal(w, r, first, primary, body, accessLog)
-		if status >= 200 && status < 500 {
+		p.invokeInternal(w, r, first, primary, body, accessLog)
+		if util.InRange(accessLog.StatusCode, 200, 500) {
 			return nil
 		}
-		return fmt.Errorf("bad status code: %d", status)
+		return fmt.Errorf("bad status code: %d", accessLog.StatusCode)
 	}); err != nil {
 		log.Printf("retry failed: %v", err)
 	}
@@ -127,15 +129,11 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 	return
 }
 
-func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest, body []byte,
-	accessLog *model.AccessLog,
-) (status int, dataWrote bool) {
+func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest,
+	body []byte, accessLog *model.AccessLog,
+) {
 	target := util.JoinURL(primary.U, r.RequestURI)
-	var reqBody io.Reader
-	if len(body) > 0 {
-		reqBody = ioutil.NopCloser(bytes.NewBuffer(body))
-	}
-	req, err := http.NewRequest(r.Method, target, reqBody)
+	req, _ := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
 
 	if primary.Timeout > 0 {
@@ -147,30 +145,26 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	rsp, err := util.Client.Do(req)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
-		return http.StatusInternalServerError, false
+		return
 	}
-
-	log.Printf("rest %s do status: %d", target, rsp.StatusCode)
 
 	if rsp.Body != nil {
 		defer iox.Close(rsp.Body)
 	}
 
-	status = rsp.StatusCode
-	rspBody, err := util.ReadBody(rsp)
-	if err != nil {
-		return status, false
-	}
+	accessLog.StatusCode = rsp.StatusCode
+	rspBody, _ := util.ReadBody(rsp)
 	accessLog.ResponseBody = string(rspBody)
 
-	log.Printf("rsp status: %d, rsp body: %s", status, rspBody)
-
 	if !first {
-		_, _ = io.Copy(io.Discard, rsp.Body)
-		return status, false
+		log.Printf("rest %s status: %d, rsp body: %s", target, accessLog.StatusCode, rspBody)
+		return
 	}
 
-	if status >= 200 && status < 300 && !ss.AnyOf(r.Method, http.MethodGet, http.MethodHead) && p.ch != nil {
+	accessLog.Target = util.JoinURL(primary.U, r.RequestURI)
+
+	if util.InRange(accessLog.StatusCode, 200, 300) &&
+		!ss.AnyOf(r.Method, "GET", "HEAD") && p.ch != nil {
 		rb := model.Bean{
 			Host:       r.Host,
 			RemoteAddr: r.RemoteAddr,
@@ -182,16 +176,14 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 			ClusterIds: []string{primary.ClusterID},
 		}
 		rb.Header.Set("Content-Type", req.Header.Get("Content-Type"))
-
 		p.ch <- rb
 	}
 
 	for k, vv := range rsp.Header {
-		if ss.AnyOf(k, "Content-Length", "Content-Encoding") {
-			continue
-		}
-		for _, v := range vv {
-			w.Header().Add(k, v)
+		if !ss.AnyOf(k, "Content-Length", "Content-Encoding") {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
 		}
 	}
 
@@ -199,6 +191,4 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	if _, err := w.Write(rspBody); err != nil {
 		log.Printf("write data failed: %v", err)
 	}
-
-	return status, true
 }

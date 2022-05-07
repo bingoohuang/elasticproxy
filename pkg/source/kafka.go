@@ -162,7 +162,7 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	}
 
 	target := util.JoinURL(primary.U, bean.RequestURI)
-	req, err := http.NewRequest(bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
+	req, _ := http.NewRequest(bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
 	for k, vv := range bean.Header {
 		for _, vi := range vv {
 			req.Header.Add(k, vi)
