@@ -2,9 +2,11 @@ module github.com/bingoohuang/elasticproxy
 
 go 1.18
 
+//replace github.com/bingoohuang/gg => /Users/bingoobjca/github/gg
+
 require (
 	github.com/Shopify/sarama v1.32.0
-	github.com/bingoohuang/gg v0.0.0-20220509064003-615386790525
+	github.com/bingoohuang/gg v0.0.0-20220509075001-a28861be24c2
 	github.com/bingoohuang/golog v0.0.0-20211112131923-101b7e1b3d4c
 	github.com/bingoohuang/jj v0.0.0-20220420012039-8c935d99e5b7
 	github.com/cespare/xxhash/v2 v2.1.1
