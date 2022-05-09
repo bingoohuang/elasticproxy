@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bingoohuang/gg/pkg/jsoni"
+
 	"github.com/bingoohuang/jj"
 
 	"github.com/Shopify/sarama"
@@ -129,8 +131,8 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 func (c *consumer) dealMessage(m *sarama.ConsumerMessage) {
 	valLen := len(m.Value)
 	prefix := ss.If(c.warnSize > 0 && valLen >= c.warnSize, "W!", "[L:15s]")
-	log.Printf("%s kafka.claimed group: %s, len: %d, value: %s, time: %v, topic: %s, offset: %d, partition: %d",
-		prefix, c.group, valLen, m.Value, m.Timestamp, m.Topic, m.Offset, m.Partition)
+	log.Printf("%s kafka.claimed group: %s, len: %d, value: %j, time: %v, topic: %s, offset: %d, partition: %d",
+		prefix, c.group, valLen, jsoni.AsClearJSON(m.Value), m.Timestamp, m.Topic, m.Offset, m.Partition)
 
 	var bean model.Bean
 	if err := ginx.JsoniConfig.Unmarshal(c.ctx, m.Value, &bean); err != nil {

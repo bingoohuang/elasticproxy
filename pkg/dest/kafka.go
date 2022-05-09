@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/bingoohuang/gg/pkg/codec"
+	"github.com/bingoohuang/gg/pkg/jsoni"
 
 	"github.com/Shopify/sarama"
 	"github.com/bingoohuang/elasticproxy/pkg/model"
@@ -65,14 +65,14 @@ func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 		prefix = fmt.Sprintf("[L:15s]")
 	}
 
-	log.Printf("%s kafka write size: %d, message: %s,to kafka", prefix, vLen, vv)
+	log.Printf("%s kafka write size: %d, message: %j,to kafka", prefix, vLen, jsoni.AsClearJSON(vv))
 
 	rsp, err := d.producer.Publish(d.Topic, vv)
 	if err != nil {
 		return fmt.Errorf("failed to publish len: %d, error %w, message: %s", vLen, err, vv)
 	}
 
-	log.Printf("%s kafka.produce result %s", prefix, codec.Json(rsp))
+	log.Printf("%s kafka.produce result %j", prefix, jsoni.AsClearJSON(rsp))
 	return nil
 }
 
