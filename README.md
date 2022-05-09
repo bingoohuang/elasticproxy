@@ -6,7 +6,6 @@ This little program acts as a http proxy for ElasticSearch.
 
 ## Features TODO
 
-- [ ] WAL log and recover
 - [x] HTTPClient(Primary/Rests) timeout 2022-05-06
 - [x] Verify _bulk api 2022-05-05
 - [x] Backup retries 2022-05-05
