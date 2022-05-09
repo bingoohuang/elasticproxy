@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bingoohuang/gg/pkg/ss"
+
 	"github.com/bingoohuang/gg/pkg/codec/b64"
 	"github.com/cespare/xxhash/v2"
 )
@@ -54,4 +56,33 @@ func TimeoutInvoke(ctx context.Context, req *http.Request, timeout time.Duration
 	}
 
 	return Client.Do(req)
+}
+
+type CopyHeaderOption struct {
+	Ignores []string
+}
+
+type CopyHeaderOptionFn func(*CopyHeaderOption)
+
+func WithIgnores(headers ...string) CopyHeaderOptionFn {
+	return func(o *CopyHeaderOption) {
+		o.Ignores = append(o.Ignores, headers...)
+	}
+}
+
+func CopyHeader(dest, src http.Header, options ...CopyHeaderOptionFn) {
+	option := &CopyHeaderOption{}
+	for _, f := range options {
+		f(option)
+	}
+
+	for k, vv := range src {
+		if ss.AnyOf(k, option.Ignores...) {
+			continue
+		}
+
+		for _, v := range vv {
+			dest.Add(k, v)
+		}
+	}
 }

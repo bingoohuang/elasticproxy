@@ -125,12 +125,7 @@ func (b *Rest) InitializePrimary(_ context.Context) error {
 		return err
 	}
 
-	var postRspBody []byte
-	if post.Body != nil {
-		defer iox.Close(post.Body)
-		postRspBody, _ = io.ReadAll(post.Body)
-	}
-
+	postRspBody, _ := util.ReadBody(post)
 	log.Printf("create ClusterID, StatusCode: %d, postRspBody: %s ", post.StatusCode, postRspBody)
 
 	if post.StatusCode != 201 {

@@ -13,12 +13,10 @@ import (
 
 	"github.com/bingoohuang/gg/pkg/ss"
 
-	"github.com/bingoohuang/gg/pkg/codec"
-	"github.com/bingoohuang/gg/pkg/iox"
-
 	"github.com/bingoohuang/elasticproxy/pkg/model"
 	"github.com/bingoohuang/elasticproxy/pkg/rest"
 	"github.com/bingoohuang/elasticproxy/pkg/util"
+	"github.com/bingoohuang/gg/pkg/codec"
 )
 
 // ElasticProxy forwards received HTTP calls to another HTTP server.
@@ -113,11 +111,11 @@ func (r *ResponseWriter) Write(data []byte) (int, error) {
 	return r.ResponseWriter.Write(data)
 }
 
-func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest,
+func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, pr rest.Rest,
 	body []byte, accessLog *model.AccessLog,
 ) {
 	if err := model.RetryDo(p.ctx, func() error {
-		p.invokeInternal(w, r, first, primary, body, accessLog)
+		p.invokeInternal(w, r, first, pr, body, accessLog)
 		if util.InRange(accessLog.StatusCode, 200, 500) {
 			return nil
 		}
@@ -129,20 +127,17 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 	return
 }
 
-func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, primary rest.Rest,
+func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, pr rest.Rest,
 	body []byte, accessLog *model.AccessLog,
 ) {
-	target := util.JoinURL(primary.U, r.RequestURI)
+	target := util.JoinURL(pr.U, r.RequestURI)
+	accessLog.Target = target
 	req, _ := http.NewRequest(r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
-	rsp, err := util.TimeoutInvoke(p.ctx, req, primary.Timeout)
+	rsp, err := util.TimeoutInvoke(p.ctx, req, pr.Timeout)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
 		return
-	}
-
-	if rsp.Body != nil {
-		defer iox.Close(rsp.Body)
 	}
 
 	accessLog.StatusCode = rsp.StatusCode
@@ -154,8 +149,6 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 		return
 	}
 
-	accessLog.Target = util.JoinURL(primary.U, r.RequestURI)
-
 	if util.InRange(accessLog.StatusCode, 200, 300) &&
 		!ss.AnyOf(r.Method, "GET", "HEAD") && p.ch != nil {
 		rb := model.Bean{
@@ -166,21 +159,14 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 			Labels:     p.Labels,
 			Body:       string(body),
 			Header:     http.Header{},
-			ClusterIds: []string{primary.ClusterID},
+			ClusterIds: []string{pr.ClusterID},
 		}
 		rb.Header.Set("Content-Type", req.Header.Get("Content-Type"))
 		p.ch <- rb
 	}
 
-	for k, vv := range rsp.Header {
-		if !ss.AnyOf(k, "Content-Length", "Content-Encoding") {
-			for _, v := range vv {
-				w.Header().Add(k, v)
-			}
-		}
-	}
-
 	w.WriteHeader(rsp.StatusCode)
+	util.CopyHeader(w.Header(), rsp.Header, util.WithIgnores("Content-Length", "Content-Encoding"))
 	if _, err := w.Write(rspBody); err != nil {
 		log.Printf("write data failed: %v", err)
 	}

@@ -3,13 +3,11 @@ package source
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 
-	"github.com/bingoohuang/gg/pkg/iox"
 	"github.com/bingoohuang/jj"
 
 	"github.com/Shopify/sarama"
@@ -163,24 +161,13 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 
 	target := util.JoinURL(primary.U, bean.RequestURI)
 	req, _ := http.NewRequest(bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
-	for k, vv := range bean.Header {
-		for _, vi := range vv {
-			req.Header.Add(k, vi)
-		}
-	}
-
+	util.CopyHeader(req.Header, bean.Header)
 	rsp, err := util.TimeoutInvoke(c.ctx, req, primary.Timeout)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
 		return
 	}
 
-	var data []byte
-	if rsp.Body != nil {
-		defer iox.Close(rsp.Body)
-		if data, err = io.ReadAll(rsp.Body); err != nil {
-			log.Printf("reading response body failed: %v", err)
-		}
-	}
+	data, _ := util.ReadBody(rsp)
 	log.Printf("rest %s do status: %d, response: %s", target, rsp.StatusCode, jj.Ugly(data))
 }

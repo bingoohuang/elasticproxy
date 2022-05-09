@@ -20,7 +20,7 @@ This little program acts as a http proxy for ElasticSearch.
 1. build: `make install`
 2. initialize: `elasticproxy -init` (this will create ctl shell script for convenience of startup or stop)
 3. start [httplive](https://github.com/bingoohuang/httplive), for backup mocking: `httplive -l`
-   , [download httplive](http://7.d5k.co/httplive/dl/)
+   , [download httplive](http://d5k.co/httplive/dl/)
 4. edit the created conf.yml file at the current working directory, [example](initassets/conf.yml)
 5. start: `./ctl start`
 6. tail log: `./ctl tail`
@@ -51,13 +51,13 @@ $ ./ctl tail
 
 1. `docker-compose up && docker-compose rm -fsv`
 2. `gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/doc/@ksuid -raw`
-   , [download gurl](http://7.d5k.co/httplive/dl/)
+   , [download gurl](http://d5k.co/httplive/dl/)
 3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
 4. elastic search
-    1. `gurl :9200/person/_search q=宣來芼`
-    2. `gurl :2900/person/_doc/28mWqww3pov6QRsQ7RVeak3QDmK -ugly -pb`
-    2. `gurl :2900/person/_search q=_id:28mWqww3pov6QRsQ7RVeak3QDmK -ugly -pb`
-    3. `gurl GET :2900/person/_search -b '{"query":{"terms":{"_id":["28mVDf3vgBojBX2SfS8zIx4zUzl"]}}}' -ugly -pb`
+    1. `gurl :9200/person/_search q=@名字`
+    2. `gurl :2900/person/_doc/@id -ugly -pb`
+    2. `gurl :2900/person/_search q=_id:@id -ugly -pb`
+    3. `gurl GET :2900/person/_search -b '{"query":{"terms":{"_id":["@id"]}}}' -ugly -pb`
 
 ```sh
 bingoobjca@bogon elasticproxy % cat testdata/bulk.json | jj -gu
