@@ -73,9 +73,9 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
-	req, _ := http.NewRequest(bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
+	req, _ := http.NewRequestWithContext(ctx, bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
-	rsp, err := util.TimeoutInvoke(ctx, req, b.Timeout)
+	rsp, err := util.TimeoutInvoke(req, b.Timeout)
 	if err != nil {
 		log.Printf("client do failed: %v", err)
 		return err

@@ -48,9 +48,9 @@ func Hash(s ...string) string {
 	return h
 }
 
-func TimeoutInvoke(ctx context.Context, req *http.Request, timeout time.Duration) (*http.Response, error) {
+func fox(req *http.Request, timeout time.Duration) (*http.Response, error) {
 	if timeout > 0 {
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(req.Context(), timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
 	}
