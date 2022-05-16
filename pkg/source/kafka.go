@@ -162,9 +162,9 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	}
 
 	target := util.JoinURL(primary.U, bean.RequestURI)
-	req, _ := http.NewRequest(bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
+	req, _ := http.NewRequestWithContext(c.ctx, bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
 	util.CopyHeader(req.Header, bean.Header)
-	rsp, err := util.TimeoutInvoke(c.ctx, req, primary.Timeout)
+	rsp, err := util.TimeoutInvoke(req, primary.Timeout)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
 		return
