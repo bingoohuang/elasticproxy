@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/bingoohuang/gg/pkg/ss"
@@ -62,6 +63,10 @@ func (p *ElasticProxy) StopWait() {
 
 // ServeHTTP only forwards allowed requests to the real ElasticSearch server.
 func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !p.checkHeader(w, r) {
+		return
+	}
+
 	accessLog := model.AccessLog{
 		RemoteAddr: r.RemoteAddr,
 		Method:     r.Method,
@@ -69,7 +74,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Direction:  "primary",
 	}
 
-	accessLog.XForwardedFor = r.Header.Get("X-Forwarded-For")
+	accessLog.XForwardedFor = w.Header().Get("X-Forwarded-For")
 
 	startTime := time.Now()
 	rw := &ResponseWriter{ResponseWriter: w}
@@ -81,7 +86,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("access log: %s", codec.Json(accessLog))
 	}()
 
-	if r.Header.Get("Upgrade") == "websocket" {
+	if w.Header().Get("Upgrade") == "websocket" {
 		accessLog.StatusCode = http.StatusNotImplemented
 		return
 	}
@@ -99,6 +104,27 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for i, primary := range p.Primaries {
 		p.invoke(rw, r, i == 0, primary, body, &accessLog)
 	}
+}
+
+func (p *ElasticProxy) checkHeader(w http.ResponseWriter, r *http.Request) bool {
+	header := r.Header
+	for k, v := range p.Header {
+		if header.Get(k) == v {
+			continue
+		}
+
+		w.WriteHeader(http.StatusUnauthorized)
+		switch {
+		case k == "Authorization" && ss.HasPrefix(v, "Basic "):
+			w.Header().Set("WWW-Authenticate", "Basic realm="+strconv.Quote("Authorization Required"))
+		default:
+
+		}
+
+		return false
+	}
+
+	return true
 }
 
 type ResponseWriter struct {

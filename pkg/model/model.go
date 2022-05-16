@@ -80,6 +80,7 @@ type Elastic struct {
 	Disabled  bool
 	LabelEval string
 	Timeout   time.Duration
+	Header    map[string]string
 }
 
 type ProxySource struct {
@@ -87,6 +88,7 @@ type ProxySource struct {
 
 	Disabled bool
 	Labels   map[string]any
+	Header   map[string]string
 }
 
 func (p ProxySource) GetLabels() map[string]any { return p.Labels }

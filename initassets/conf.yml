@@ -8,6 +8,10 @@ source:
   proxies:
     - port: 2900
       disabled: false
+      header: # check auth header
+        Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: Basic <TOKEN> # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: ApiKey <TOKEN> # The <TOKEN> is computed as base64(API key ID:API key)
       labels:
         SRC: PROXY
 
@@ -34,12 +38,18 @@ destination:
     - url: http://127.0.0.1:9200/
       timeout: 3s
       labelEval: SRC==PROXY || SRC==KAFKA
+      header:
+        Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: Basic <TOKEN> # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: ApiKey <TOKEN> # The <TOKEN> is computed as base64(API key ID:API key)
 
   rests:
     - url: http://127.0.0.1:5003/backup
       disabled: false
       timeout: 5s
       labelEval: SRC==PROXY
+      header:
+        Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
 
   kafkas:
     - topic: elastic.backup
