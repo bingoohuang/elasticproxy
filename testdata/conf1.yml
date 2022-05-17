@@ -7,23 +7,17 @@ source:
 
   proxies:
     - port: 2900
-      disabled: false
-      labels:
-        SRC: PROXY
 
 destination:
 
   primaries:
     - url: http://192.168.126.16:9200/
       timeout: 3s
-      labelEval: SRC==PROXY
       header:
-        Authorization: Basic ZWxhc3RpYzoxcWF6WkFRIQ== # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        Authorization: Basic ZWxhc3RpYzoxcWF6WkFRIQ==
 
   kafkas:
     - topic: elastic16.backup
-      disabled: false
-      labelEval: SRC==PROXY
       version: 0.10.0.0
       codec: none
       brokers:
