@@ -72,6 +72,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Method:     r.Method,
 		Path:       r.URL.Path,
 		Direction:  "primary",
+		StatusCode: 599,
 	}
 
 	accessLog.XForwardedFor = w.Header().Get("X-Forwarded-For")
@@ -160,6 +161,9 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	accessLog.Target = target
 	req, _ := http.NewRequestWithContext(p.ctx, r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
 	req.Header = r.Header
+	for k, v := range pr.Header {
+		req.Header.Add(k, v)
+	}
 	rsp, err := util.TimeoutInvoke(req, pr.Timeout)
 	if err != nil {
 		log.Printf("rest %s do failed: %v", target, err)
