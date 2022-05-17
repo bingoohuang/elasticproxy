@@ -95,12 +95,11 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	return nil
 }
 
-func (b *Rest) InitializePrimary(_ context.Context) error {
+func (b *Rest) InitializePrimary(ctx context.Context) error {
 	u := *b.U
 	u.Path = "/elasticproxy/doc/clusterid"
 	target := u.String()
-
-	rsp, err := util.Client.Get(target)
+	rsp, err := util.TimeoutGet(ctx, target, b.Timeout, b.Header)
 	if err != nil {
 		return err
 	}
@@ -124,7 +123,8 @@ func (b *Rest) InitializePrimary(_ context.Context) error {
 
 	clusterID := ksuid.New().String()
 	data, _ = json.Marshal(map[string]string{"id": clusterID})
-	post, err := util.Client.Post(target, "application/json", bytes.NewBuffer(data))
+	post, err := util.TimeoutPost(ctx, target, "application/json",
+		io.NopCloser(bytes.NewReader(data)), b.Timeout, b.Header)
 	if err != nil {
 		return err
 	}

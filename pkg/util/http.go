@@ -48,6 +48,25 @@ func Hash(s ...string) string {
 	return h
 }
 
+func TimeoutPost(ctx context.Context, target, contentType string, body io.ReadCloser, timeout time.Duration, header map[string]string) (*http.Response, error) {
+	req, _ := http.NewRequestWithContext(ctx, "POST", target, body)
+	for k, v := range header {
+		req.Header.Add(k, v)
+	}
+	req.Header.Set("Content-Type", contentType)
+
+	return TimeoutInvoke(req, timeout)
+}
+
+func TimeoutGet(ctx context.Context, target string, timeout time.Duration, header map[string]string) (*http.Response, error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	for k, v := range header {
+		req.Header.Add(k, v)
+	}
+
+	return TimeoutInvoke(req, timeout)
+}
+
 func TimeoutInvoke(req *http.Request, timeout time.Duration) (*http.Response, error) {
 	if timeout > 0 {
 		ctx, cancel := context.WithTimeout(req.Context(), timeout)
