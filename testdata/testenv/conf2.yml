@@ -1,0 +1,16 @@
+---
+chanSize: 0
+source:
+  kafkas:
+    - version: 2.7.2
+      brokers:
+        - 192.168.126.16:1092
+      topics:
+        - elastic16.backup
+      group: elastic.sync.01
+      newest: false
+      assignor: range
+destination:
+  primaries:
+    - url: http://192.168.112.67:9200/
+      timeout: 3s

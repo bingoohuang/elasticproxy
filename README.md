@@ -4,6 +4,10 @@ This little program acts as a http proxy for ElasticSearch.
 
 ![image](elasticproxy.svg)
 
+## Issue tracking
+
+- [ ] No response for SIGKILL (./ctl stop)
+
 ## Features TODO
 
 - [x] HTTPClient(Primary/Rests) timeout 2022-05-06
@@ -49,7 +53,7 @@ $ ./ctl tail
 ## help commands
 
 1. `docker-compose up && docker-compose rm -fsv`
-2. `gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/doc/@ksuid -raw`
+2. `gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/_doc/@ksuid -raw`
    , [download gurl](http://d5k.co/httplive/dl/)
 3. `gurl http://127.0.0.1:2900/_search` vs `http://127.0.0.1:9200/_search`
 4. elastic search

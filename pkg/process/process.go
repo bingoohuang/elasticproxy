@@ -96,11 +96,12 @@ type Source struct {
 	Kafkas  []SourceReader
 }
 
-func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<- model.Bean) {
+func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<- model.Bean) error {
 	for _, item := range s.Proxies {
 		if i, ok := item.(model.Initializer); ok {
 			if err := i.Initialize(ctx); err != nil {
 				log.Printf("initialization failed: %v", err)
+				return err
 			}
 		}
 		go item.StartRead(ctx, primaries, ch)
@@ -110,10 +111,13 @@ func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<-
 		if i, ok := item.(model.Initializer); ok {
 			if err := i.Initialize(ctx); err != nil {
 				log.Printf("initialization failed: %v", err)
+				return err
 			}
 		}
 		go item.StartRead(ctx, primaries, ch)
 	}
+
+	return nil
 }
 
 func CreateSources(config *model.Config) (*Source, error) {

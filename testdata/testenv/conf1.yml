@@ -17,8 +17,8 @@ destination:
         Authorization: Basic ZWxhc3RpYzoxcWF6WkFRIQ==
 
   kafkas:
-    - topic: elastic16.backup
-      version: 0.10.0.0
+    - version: 2.7.2
+      topic: elastic16.backup
       codec: none
       brokers:
-        - 192.168.126.18:9092
+        - 192.168.126.16:1092
