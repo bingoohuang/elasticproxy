@@ -46,3 +46,12 @@ zookeeper.connect=localhost:2081
 nohup bin/zookeeper-server-start.sh config/zookeeper.properties 3>&1>> zk.nohup.log &
 nohup bin/kafka-server-start.sh config/server.properties 2>&1 >> kafka.nohup.log &
 ```
+
+## RSS usage tracking
+
+```sh
+[footstone@fs02-192-168-126-16 ~]$ ps aux | awk 'NR==1 || /elasticproxy$/'
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+footsto+ 14945  0.2  0.0 720048 20616 ?        Sl   5月18   4:10 elasticproxy
+footsto+ 24582  0.0  0.0 720304 22184 ?        Sl   5月18   0:19 elasticproxy
+```
