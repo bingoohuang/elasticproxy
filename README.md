@@ -6,7 +6,7 @@ This little program acts as a http proxy for ElasticSearch.
 
 ## Issue tracking
 
-- [ ] No response for SIGKILL (./ctl stop)
+- [x] No response for SIGKILL (./ctl stop)
 
 ## Features TODO
 

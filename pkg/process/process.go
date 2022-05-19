@@ -20,13 +20,20 @@ type Destination struct {
 	Primaries []rest.Rest
 	Rests     []model.BackupWriter
 	Kafkas    []model.BackupWriter
+	stopCh    chan struct{}
 }
 
-func (d Destination) Startup(ctx context.Context, ch chan model.Bean) {
+func (d *Destination) Wait() {
+	<-d.stopCh
+}
+
+func (d *Destination) Startup(ctx context.Context, ch chan model.Bean) {
+	d.stopCh = make(chan struct{})
 	for bean := range ch {
 		writeBackups(ctx, d.Rests, bean)
 		writeBackups(ctx, d.Kafkas, bean)
 	}
+	d.stopCh <- struct{}{}
 }
 
 func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.Bean) {
@@ -94,6 +101,15 @@ func CreateDestinations(ctx context.Context, config *model.Config) (*Destination
 type Source struct {
 	Proxies []SourceReader
 	Kafkas  []SourceReader
+}
+
+func (s *Source) Stop() {
+	for _, item := range s.Proxies {
+		item.StopWait()
+	}
+	for _, item := range s.Kafkas {
+		item.StopWait()
+	}
 }
 
 func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<- model.Bean) error {

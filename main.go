@@ -45,7 +45,13 @@ func main() {
 	if err := sources.GoStartup(ctx, destinations.Primaries, ch); err != nil {
 		log.Fatalf("start up source failed: %v", err)
 	}
-	destinations.Startup(ctx, ch)
+	go destinations.Startup(ctx, ch)
+
+	<-ctx.Done()
+
+	sources.Stop()
+	close(ch)
+	destinations.Wait()
 }
 
 func init() {
