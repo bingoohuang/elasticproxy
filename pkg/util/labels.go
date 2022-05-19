@@ -25,7 +25,7 @@ const (
 func MatchLabels(matcher LabelsMatcher, labels map[string]any) bool {
 	ok, err := matcher.MatchLabels(labels)
 	if err != nil {
-		log.Printf("eval labels failed: %v", err)
+		log.Printf("E! eval labels failed: %v", err)
 	}
 
 	return ok

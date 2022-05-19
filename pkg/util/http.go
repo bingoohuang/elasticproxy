@@ -20,7 +20,7 @@ func ReadBody(rsp *http.Response) ([]byte, error) {
 	if rsp.Header.Get("Content-Encoding") == "gzip" {
 		reader, err := gzip.NewReader(rsp.Body)
 		if err != nil {
-			log.Printf("gzip read failed: %v", err)
+			log.Printf("E! gzip read failed: %v", err)
 			return nil, err
 		}
 		bodyReader = reader
@@ -30,7 +30,7 @@ func ReadBody(rsp *http.Response) ([]byte, error) {
 
 	rspBody, err := io.ReadAll(bodyReader)
 	if err != nil {
-		log.Printf("reading response body failed: %v", err)
+		log.Printf("E! reading response body failed: %v", err)
 	}
 	return rspBody, err
 }

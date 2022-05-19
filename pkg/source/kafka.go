@@ -136,7 +136,7 @@ func (c *consumer) dealMessage(m *sarama.ConsumerMessage) {
 
 	var bean model.Bean
 	if err := ginx.JsoniConfig.Unmarshal(c.ctx, m.Value, &bean); err != nil {
-		log.Printf("unmarshal %s failed: %v", m.Value, err)
+		log.Printf("E! unmarshal %s failed: %v", m.Value, err)
 	} else {
 		bean.Labels = c.labels
 		c.writePrimaries(bean)
@@ -150,7 +150,7 @@ func (c *consumer) writePrimaries(bean model.Bean) {
 			c.writePrimary(primary, bean)
 			return nil
 		}); err != nil {
-			log.Printf("retry failed: %v", err)
+			log.Printf("E! retry failed: %v", err)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	util.CopyHeader(req.Header, bean.Header)
 	rsp, err := util.TimeoutInvoke(req, primary.Timeout)
 	if err != nil {
-		log.Printf("rest %s do failed: %v", target, err)
+		log.Printf("E! rest %s do failed: %v", target, err)
 		return
 	}
 

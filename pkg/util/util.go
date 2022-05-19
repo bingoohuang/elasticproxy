@@ -12,7 +12,7 @@ import (
 func JoinURL(base *url.URL, target string) string {
 	u, err := url.Parse(target)
 	if err != nil {
-		log.Printf("parse url %s failed: %s", target, err)
+		log.Printf("E! parse url %s failed: %s", target, err)
 	}
 
 	b := *base

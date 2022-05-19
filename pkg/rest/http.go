@@ -81,7 +81,7 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 
 	rsp, err := util.TimeoutInvoke(req, b.Timeout)
 	if err != nil {
-		log.Printf("client do failed: %v", err)
+		log.Printf("E! client do failed: %v", err)
 		return err
 	}
 	status = rsp.StatusCode

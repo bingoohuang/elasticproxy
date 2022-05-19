@@ -54,7 +54,7 @@ func (d *Kafka) Initialize(context.Context) error {
 func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 	vv, err := ginx.JsoniConfig.Marshal(ctx, bean)
 	if err != nil {
-		log.Printf("marshaling json %+v failed: %v", vv, err)
+		log.Printf("E! marshaling json %+v failed: %v", vv, err)
 	}
 	vLen := len(vv)
 

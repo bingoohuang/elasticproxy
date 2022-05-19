@@ -49,14 +49,14 @@ func (p *ElasticProxy) StartRead(ctx context.Context, primaries []rest.Rest, ch 
 	}
 
 	if err := p.server.ListenAndServe(); err != nil {
-		log.Printf("ListenAndServe failed: %v", err)
+		log.Printf("E! ListenAndServe failed: %v", err)
 	}
 	p.done <- struct{}{}
 }
 
 func (p *ElasticProxy) StopWait() {
 	if err := p.server.Shutdown(p.ctx); err != nil {
-		log.Printf("shutdown failed: %v", err)
+		log.Printf("E! shutdown failed: %v", err)
 	}
 	<-p.done
 }
@@ -148,7 +148,7 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 		}
 		return fmt.Errorf("bad status code: %d", accessLog.StatusCode)
 	}); err != nil {
-		log.Printf("retry failed: %v", err)
+		log.Printf("E! retry failed: %v", err)
 	}
 
 	return
@@ -166,7 +166,7 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	}
 	rsp, err := util.TimeoutInvoke(req, pr.Timeout)
 	if err != nil {
-		log.Printf("rest %s do failed: %v", target, err)
+		log.Printf("E! rest %s do failed: %v", target, err)
 		return
 	}
 
@@ -198,6 +198,6 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 	w.WriteHeader(rsp.StatusCode)
 	util.CopyHeader(w.Header(), rsp.Header, util.WithIgnores("Content-Length", "Content-Encoding"))
 	if _, err := w.Write(rspBody); err != nil {
-		log.Printf("write data failed: %v", err)
+		log.Printf("E! write data failed: %v", err)
 	}
 }

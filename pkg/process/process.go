@@ -40,7 +40,7 @@ func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.
 	for _, r := range writers {
 		if ok, err := r.MatchLabels(bean.Labels); !ok {
 			if err != nil {
-				log.Printf("%s eval labels failed: %v", r.Name(), err)
+				log.Printf("E! %s eval labels failed: %v", r.Name(), err)
 			}
 			continue
 		}
@@ -48,7 +48,7 @@ func writeBackups(ctx context.Context, writers []model.BackupWriter, bean model.
 		if err := model.RetryDo(ctx, func() error {
 			return r.Write(ctx, bean)
 		}); err != nil {
-			log.Printf("write %s failed: %v", r.Name(), err)
+			log.Printf("E! write %s failed: %v", r.Name(), err)
 		}
 	}
 }
@@ -116,7 +116,7 @@ func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<-
 	for _, item := range s.Proxies {
 		if i, ok := item.(model.Initializer); ok {
 			if err := i.Initialize(ctx); err != nil {
-				log.Printf("initialization failed: %v", err)
+				log.Printf("E! initialization failed: %v", err)
 				return err
 			}
 		}
@@ -126,7 +126,7 @@ func (s *Source) GoStartup(ctx context.Context, primaries []rest.Rest, ch chan<-
 	for _, item := range s.Kafkas {
 		if i, ok := item.(model.Initializer); ok {
 			if err := i.Initialize(ctx); err != nil {
-				log.Printf("initialization failed: %v", err)
+				log.Printf("E! initialization failed: %v", err)
 				return err
 			}
 		}

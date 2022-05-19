@@ -43,7 +43,7 @@ func main() {
 
 	ch := make(chan model.Bean, c.ChanSize)
 	if err := sources.GoStartup(ctx, destinations.Primaries, ch); err != nil {
-		log.Fatalf("start up source failed: %v", err)
+		log.Fatalf("E! start up source failed: %v", err)
 	}
 	go destinations.Startup(ctx, ch)
 
