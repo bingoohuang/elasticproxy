@@ -50,8 +50,8 @@ nohup bin/kafka-server-start.sh config/server.properties 2>&1 >> kafka.nohup.log
 ## RSS usage tracking
 
 ```sh
-[footstone@fs02-192-168-126-16 ~]$ ps aux | awk 'NR==1 || /elasticproxy$/'
+[footstone@fs02-192-168-126-16 kafka2elastic]$ ps aux | awk 'NR==1 || /elasticproxy$/'
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-footsto+ 14945  0.2  0.0 720048 20616 ?        Sl   5月18   4:10 elasticproxy
-footsto+ 24582  0.0  0.0 720304 22184 ?        Sl   5月18   0:19 elasticproxy
+footsto+  9396  1.5  0.0 718192 17488 pts/12   Sl   17:10   0:00 elasticproxy
+footsto+ 14008  4.5  0.0 717360 16656 pts/4    Sl   17:10   0:00 elasticproxy
 ```
