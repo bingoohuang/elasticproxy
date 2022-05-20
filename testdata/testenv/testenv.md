@@ -50,8 +50,23 @@ nohup bin/kafka-server-start.sh config/server.properties 2>&1 >> kafka.nohup.log
 ## RSS usage tracking
 
 ```sh
-[footstone@fs02-192-168-126-16 kafka2elastic]$ ps aux | awk 'NR==1 || /elasticproxy$/'
+[footstone@fs02-192-168-126-16 bingoo]$ ps aux | awk 'NR==1 || /elasticproxy$/'
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 footsto+  9396  1.5  0.0 718192 17488 pts/12   Sl   17:10   0:00 elasticproxy
 footsto+ 14008  4.5  0.0 717360 16656 pts/4    Sl   17:10   0:00 elasticproxy
+
+[footstone@fs02-192-168-126-16 bingoo]$ ps aux | awk 'NR==1 || /elasticproxy$/'
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+footsto+  9396  0.2  0.0 719536 20524 ?        Sl   5月19   2:33 elasticproxy
+footsto+ 14008  0.0  0.0 719536 20716 ?        Sl   5月19   0:10 elasticproxy
+```
+
+```sh
+$ gurl GET 192.168.112.67:9200/person/_search size=1 -pb q=赫连菴嘗 | jj hits.hits.0._source
+{
+  "addr": "浙江省丽水市黆抝路5481号枚鍫小区1单元2242室",
+  "idcard": "112534199405317057",
+  "name": "赫连菴嘗",
+  "sex": "女"
+}
 ```
