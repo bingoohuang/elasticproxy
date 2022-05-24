@@ -72,7 +72,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Method:     r.Method,
 		Path:       r.URL.Path,
 		Direction:  "primary",
-		StatusCode: 599,
+		StatusCode: http.StatusBadGateway,
 	}
 
 	accessLog.XForwardedFor = w.Header().Get("X-Forwarded-For")
@@ -80,7 +80,7 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	rw := &ResponseWriter{ResponseWriter: w}
 	defer func() {
-		if !rw.DataWritten {
+		if !rw.statusCodeWritten {
 			w.WriteHeader(accessLog.StatusCode)
 		}
 
@@ -132,12 +132,12 @@ func (p *ElasticProxy) checkHeader(w http.ResponseWriter, r *http.Request) bool 
 
 type ResponseWriter struct {
 	http.ResponseWriter
-	DataWritten bool
+	statusCodeWritten bool
 }
 
-func (r *ResponseWriter) Write(data []byte) (int, error) {
-	r.DataWritten = true
-	return r.ResponseWriter.Write(data)
+func (r *ResponseWriter) WriteHeader(statusCode int) {
+	r.statusCodeWritten = true
+	r.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, pr rest.Rest,
@@ -181,8 +181,11 @@ func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, fi
 		return
 	}
 
-	if util.InRange(accessLog.StatusCode, 200, 300) &&
-		!ss.AnyOf(r.Method, "GET", "HEAD") && p.ch != nil {
+	if !util.InRange(accessLog.StatusCode, 200, 300) {
+		return
+	}
+
+	if !ss.AnyOf(r.Method, "GET", "HEAD") && p.ch != nil {
 		rb := model.Bean{
 			Host:       r.Host,
 			RemoteAddr: r.RemoteAddr,
