@@ -66,12 +66,14 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	}
 	startTime := time.Now()
 
-	defer func() {
-		accessLog.Duration = time.Now().Sub(startTime).String()
-		accessLog.StatusCode = status
+	if !b.NoAccessLog {
+		defer func() {
+			accessLog.Duration = time.Now().Sub(startTime).String()
+			accessLog.StatusCode = status
 
-		log.Printf("access log: %s", codec.Json(accessLog))
-	}()
+			log.Printf("access log: %s", codec.Json(accessLog))
+		}()
+	}
 
 	req, _ := http.NewRequestWithContext(ctx, bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
 	req.Header = bean.Header
@@ -97,7 +99,7 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 
 func (b *Rest) InitializePrimary(ctx context.Context) error {
 	u := *b.U
-	u.Path = "/elasticproxy/doc/clusterid"
+	u.Path = "/_meta_elasticproxy/_doc/clusterid"
 	target := u.String()
 	rsp, err := util.TimeoutGet(ctx, target, b.Timeout, b.Header)
 	if err != nil {

@@ -59,20 +59,24 @@ func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 	vLen := len(vv)
 
 	prefix := ""
-	if d.WarnSize > 0 && vLen >= d.WarnSize {
-		prefix = "W!"
-	} else {
-		prefix = fmt.Sprintf("[L:15s]")
-	}
+	if !d.NoAccessLog {
+		if d.WarnSize > 0 && vLen >= d.WarnSize {
+			prefix = "W!"
+		} else {
+			prefix = fmt.Sprintf("[L:15s]")
+		}
 
-	log.Printf("%s kafka write size: %d, message: %j,to kafka", prefix, vLen, jsoni.AsClearJSON(vv))
+		log.Printf("%s kafka write size: %d, message: %j,to kafka", prefix, vLen, jsoni.AsClearJSON(vv))
+	}
 
 	rsp, err := d.producer.Publish(d.Topic, vv)
 	if err != nil {
 		return fmt.Errorf("failed to publish len: %d, error %w, message: %s", vLen, err, vv)
 	}
 
-	log.Printf("%s kafka.produce result %j", prefix, jsoni.AsClearJSON(rsp))
+	if !d.NoAccessLog {
+		log.Printf("%s kafka.produce result %j", prefix, jsoni.AsClearJSON(rsp))
+	}
 	return nil
 }
 
