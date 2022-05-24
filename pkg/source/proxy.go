@@ -148,7 +148,7 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 		if util.InRange(accessLog.StatusCode, 200, 500) {
 			return nil
 		}
-		return fmt.Errorf("bad status code: %d", accessLog.StatusCode)
+		return fmt.Errorf("bad status code: %d, response: %s", accessLog.StatusCode, accessLog.ResponseBody)
 	}); err != nil {
 		log.Printf("E! retry failed: %v", err)
 	}
