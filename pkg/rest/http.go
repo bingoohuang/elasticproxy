@@ -99,7 +99,17 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 
 func (b *Rest) InitializePrimary(ctx context.Context) error {
 	u := *b.U
-	u.Path = "/_meta_elasticproxy/_doc/clusterid"
+
+	// https://discuss.elastic.co/t/index-name-type-name-and-field-name-rules/133039
+	// The rules for index names are encoded in MetaDataCreateIndexService 730. Essentially:
+	//
+	// 1. Lowercase only
+	// 2. Cannot include \, /, *, ?, ", <, >, |, space (the character, not the word), ,, #
+	// 3. Indices prior to 7.0 could contain a colon (:), but that's been deprecated and won't be supported in 7.0+
+	// 4. Cannot start with -, _, +
+	// 5. Cannot be . or ..
+	// 6. Cannot be longer than 255 characters
+	u.Path = "/meta.elasticproxy/_doc/clusterid"
 	target := u.String()
 	rsp, err := util.TimeoutGet(ctx, target, b.Timeout, b.Header)
 	if err != nil {

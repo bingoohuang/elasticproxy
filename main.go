@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"github.com/bingoohuang/gg/pkg/codec"
 	"log"
 	"net/http"
 	"time"
@@ -27,6 +28,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("parse configuration, failed: %v", err)
 	}
+
+	log.Printf("read config: %s", codec.Json(c))
 
 	ctx, _ := sigx.RegisterSignals(nil)
 	sigx.RegisterSignalProfile()

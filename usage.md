@@ -173,3 +173,73 @@ $ gurl GET 192.168.112.67:9200/person/_search size=1 -pb q=路絁猭
 
 ## 压测数据
 
+20 万单条 POST 数据压测结果
+
+| 目标               | TPS  | 损失  |
+|------------------|------|-----|
+| elasticproxy 代理  | 730  | 40% |
+| elasticsearch 原始 | 1200 | -   |
+
+原始输出：
+
+```sh
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p3/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv
+Log details to: ./blow_20220524163840_2009974412.log
+Berf benchmarking http://192.168.126.16:2900/p3/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
+@Real-time charts is on http://127.0.0.1:28888
+
+Summary:
+  Elapsed             4m32.132s
+  Count/RPS      200000 734.937
+    200               318 1.169
+    201          199682 733.768
+  ReadWrite    1.781 2.401 Mbps
+  Connections               100
+
+Statistics    Min      Mean      StdDev       Max
+  Latency   2.773ms  135.869ms  295.123ms  8.665835s
+  RPS          1      760.33     406.06     1741.79
+
+Latency Percentile:
+  P50          P75        P90       P95        P99       P99.9     P99.99
+  82.683ms  126.133ms  223.207ms  379.65ms  1.087599s  4.326544s  8.358918s
+
+Latency Histogram:
+  93.919ms   171644  85.82%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  214.442ms   21007  10.50%  ■■■■■
+  463.175ms    5095   2.55%  ■
+  1.005927s    1509   0.75%
+  1.531131s     159   0.08%
+  2.972024s     363   0.18%
+  6.034726s     222   0.11%
+  8.665835s       1   0.00%
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p4/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv
+Log details to: ./blow_20220524164744_758281360.log
+Berf benchmarking http://192.168.126.16:9200/p4/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
+@Real-time charts is on http://127.0.0.1:28888
+
+Summary:
+  Elapsed             2m49.982s
+  Count/RPS     200000 1176.589
+    201         200000 1176.589
+  ReadWrite    3.163 3.844 Mbps
+  Connections               100
+
+Statistics    Min      Mean     StdDev      Max
+  Latency   1.549ms  84.844ms  158.59ms  3.674785s
+  RPS         29      1176.3    750.6     3461.79
+
+Latency Percentile:
+  P50         P75       P90        P95        P99       P99.9     P99.99
+  37.976ms  80.54ms  168.923ms  304.081ms  883.682ms  1.545685s  2.553689s
+
+Latency Histogram:
+  45.09ms    152119  76.06%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  112.236ms   32954  16.48%  ■■■■■■■■■
+  279.471ms   10421   5.21%  ■■■
+  595.99ms     3063   1.53%  ■
+  1.011403s     998   0.50%
+  1.371014s     391   0.20%
+  2.274201s      48   0.02%
+  3.090254s       6   0.00%
+```
