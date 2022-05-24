@@ -8,6 +8,7 @@ source:
   proxies:
     - port: 2900
       disabled: false
+      noaccesslog: true
       header: # check auth header
         # Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
         #es-secondary-authorization: Basic <TOKEN> # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
@@ -18,6 +19,7 @@ source:
   kafkas:
     - version: 2.5.1
       disabled: false
+      noaccesslog: true
       brokers:
         - localhost:9092
       # kafka消费者主题列表
@@ -37,6 +39,7 @@ destination:
   primaries:
     - url: http://127.0.0.1:9200/
       timeout: 3s
+      noaccesslog: true
       labelEval: SRC==PROXY || SRC==KAFKA
       header:
         Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)

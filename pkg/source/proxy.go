@@ -83,8 +83,11 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !rw.DataWritten {
 			w.WriteHeader(accessLog.StatusCode)
 		}
-		accessLog.Duration = time.Now().Sub(startTime).String()
-		log.Printf("access log: %s", codec.Json(accessLog))
+
+		if !p.NoAccessLog {
+			accessLog.Duration = time.Now().Sub(startTime).String()
+			log.Printf("access log: %s", codec.Json(accessLog))
+		}
 	}()
 
 	if w.Header().Get("Upgrade") == "websocket" {
@@ -119,7 +122,6 @@ func (p *ElasticProxy) checkHeader(w http.ResponseWriter, r *http.Request) bool 
 		case k == "Authorization" && ss.HasPrefix(v, "Basic "):
 			w.Header().Set("WWW-Authenticate", "Basic realm="+strconv.Quote("Authorization Required"))
 		default:
-
 		}
 
 		return false
