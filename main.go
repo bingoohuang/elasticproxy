@@ -2,10 +2,11 @@ package main
 
 import (
 	"embed"
-	"github.com/bingoohuang/gg/pkg/codec"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/bingoohuang/gg/pkg/codec"
 
 	"github.com/bingoohuang/elasticproxy/pkg/process"
 	"github.com/bingoohuang/gg/pkg/sigx"

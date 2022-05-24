@@ -2,12 +2,15 @@ package util
 
 import (
 	"compress/gzip"
-	"context"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/bingoohuang/gg/pkg/iox"
+
+	"github.com/valyala/fasthttp"
 
 	"github.com/bingoohuang/gg/pkg/ss"
 
@@ -27,6 +30,8 @@ func ReadBody(rsp *http.Response) ([]byte, error) {
 	} else {
 		bodyReader = rsp.Body
 	}
+
+	defer iox.Close(rsp.Body)
 
 	rspBody, err := io.ReadAll(bodyReader)
 	if err != nil {
@@ -48,33 +53,91 @@ func Hash(s ...string) string {
 	return h
 }
 
-func TimeoutPost(ctx context.Context, target, contentType string, body io.ReadCloser, timeout time.Duration, header map[string]string) (*http.Response, error) {
-	req, _ := http.NewRequestWithContext(ctx, "POST", target, body)
+func TimeoutPost(target, contentType string, data []byte, timeout time.Duration, header map[string]string) (int, string, error) {
+	req := fasthttp.AcquireRequest()
+	rsp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(rsp)
+
+	req.Header.SetMethod(http.MethodPost)
+	req.Header.SetRequestURI(target)
 	for k, v := range header {
 		req.Header.Add(k, v)
 	}
 	req.Header.Set("Content-Type", contentType)
+	req.SetBody(data)
 
-	return TimeoutInvoke(req, timeout)
+	var err error
+	if timeout > 0 {
+		err = fasthttp.DoTimeout(req, rsp, timeout)
+	} else {
+		err = fasthttp.Do(req, rsp)
+	}
+
+	if err != nil {
+		return 0, "", err
+	}
+
+	return rsp.StatusCode(), string(rsp.Body()), nil
 }
 
-func TimeoutGet(ctx context.Context, target string, timeout time.Duration, header map[string]string) (*http.Response, error) {
-	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+func TimeoutGet(target string, timeout time.Duration, header map[string]string) (int, string, error) {
+	req := fasthttp.AcquireRequest()
+	rsp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(rsp)
+
+	req.Header.SetMethod(http.MethodGet)
+	req.Header.SetRequestURI(target)
 	for k, v := range header {
 		req.Header.Add(k, v)
 	}
 
-	return TimeoutInvoke(req, timeout)
-}
-
-func TimeoutInvoke(req *http.Request, timeout time.Duration) (*http.Response, error) {
+	var err error
 	if timeout > 0 {
-		ctx, cancel := context.WithTimeout(req.Context(), timeout)
-		defer cancel()
-		req = req.WithContext(ctx)
+		err = fasthttp.DoTimeout(req, rsp, timeout)
+	} else {
+		err = fasthttp.Do(req, rsp)
 	}
 
-	return Client.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+
+	return rsp.StatusCode(), string(rsp.Body()), nil
+}
+
+func TimeoutInvoke(target, method string, header http.Header, body string, timeout time.Duration, headerFn func(k, v []byte)) (int, string, error) {
+	req := fasthttp.AcquireRequest()
+	rsp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(rsp)
+
+	req.Header.SetMethod(method)
+	req.Header.SetRequestURI(target)
+	for k, v1 := range header {
+		for _, v2 := range v1 {
+			req.Header.Add(k, v2)
+		}
+	}
+	req.SetBodyString(body)
+
+	var err error
+	if timeout > 0 {
+		err = fasthttp.DoTimeout(req, rsp, timeout)
+	} else {
+		err = fasthttp.Do(req, rsp)
+	}
+
+	if err != nil {
+		return 0, "", err
+	}
+
+	if headerFn != nil {
+		rsp.Header.VisitAll(headerFn)
+	}
+
+	return rsp.StatusCode(), string(rsp.Body()), nil
 }
 
 type CopyHeaderOption struct {
@@ -89,7 +152,7 @@ func WithIgnores(headers ...string) CopyHeaderOptionFn {
 	}
 }
 
-func CopyHeader(dest, src http.Header, options ...CopyHeaderOptionFn) {
+func CopyStdHeader(dest, src http.Header, options ...CopyHeaderOptionFn) {
 	option := &CopyHeaderOption{}
 	for _, f := range options {
 		f(option)
@@ -102,6 +165,23 @@ func CopyHeader(dest, src http.Header, options ...CopyHeaderOptionFn) {
 
 		for _, v := range vv {
 			dest.Add(k, v)
+		}
+	}
+}
+
+func CopyHeader(dest *fasthttp.RequestCtx, src http.Header, options ...CopyHeaderOptionFn) {
+	option := &CopyHeaderOption{}
+	for _, f := range options {
+		f(option)
+	}
+
+	for k, vv := range src {
+		if ss.AnyOf(k, option.Ignores...) {
+			continue
+		}
+
+		for _, v := range vv {
+			dest.Response.Header.Add(k, v)
 		}
 	}
 }

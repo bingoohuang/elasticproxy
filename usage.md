@@ -51,45 +51,26 @@ elasticproxy 通过反向代理和 kafka 对象，提供两个 elasticsearch 集
 通过反向代理，写入数据： `gurl -b '{"addr":"@地址","idcard":"@身份证","name":"@姓名","sex":"@性别"}' http://192.168.126.16:2900/test1/_doc/@ksuid`
 
 ```sh
-$ gurl -b '{"addr":"@地址","idcard":"@身份证","name":"@姓名","sex":"@性别"}' http://192.168.126.16:2900/test1/_doc/@ksuid
-Conn-Session: 2.0.1.13:62403->192.168.126.16:2900 (reused: false, wasIdle: false, idle: 0s)
-POST /test1/_doc/29bKOROUFVvRVQIlsrGYYzJwuTy HTTP/1.1
-Host: 192.168.126.16:2900
+[footstone@fs02-192-168-126-16 ~]$ gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/_doc/@ksuid -raw -pa
+Conn-Session: 127.0.0.1:45842->127.0.0.1:2900 (reused: false, wasIdle: false, idle: 0s)
+POST /person/_doc/29c4ORiakYfPcUD0qRpsUcKTbkw HTTP/1.1
+Host: 127.0.0.1:2900
 Accept: application/json
 Accept-Encoding: gzip, deflate
 Content-Type: application/json
-Gurl-Date: Tue, 24 May 2022 07:11:52 GMT
+Gurl-Date: Tue, 24 May 2022 13:30:07 GMT
 User-Agent: gurl/1.0.0
 
-{
-"addr": "湖北省宜昌市炦芣路935号坷鈣小区19单元2260室",
-"idcard": "548797200502036828",
-"name": "路絁猭",
-"sex": "女"
-}
-
+{"addr":"湖南省益阳市鮄犫路2311号陈房小区12单元1499室","idcard":"422135201404041412","name":"通觅惋","sex":"男"}
 HTTP/1.1 201 Created
-Date: Tue, 24 May 2022 07:11:53 GMT
-Content-Length: 179
-Content-Type: text/plain; charset=utf-8
+Server: fasthttp
+Date: Tue, 24 May 2022 13:30:07 GMT
+Content-Type: application/json; charset=UTF-8
+Content-Length: 181
+Location: /person/_doc/29c4ORiakYfPcUD0qRpsUcKTbkw
 
-{
-"_index": "test1",
-"_type": "_doc",
-"_id": "29bKOROUFVvRVQIlsrGYYzJwuTy",
-"_version": 1,
-"result": "created",
-"_shards": {
-"total": 2,
-"successful": 1,
-"failed": 0
-},
-"_seq_no": 0,
-"_primary_term": 1
-}
-
-2022/05/24 15:11:53.489314 main.go:163: current request cost: 529.989062ms
-Complete, total cost:  530.136099ms
+2022/05/24 21:30:07.267615 main.go:163: current request cost: 63.885064ms
+Complete, total cost:  64.246626ms
 ```
 
 查询数据（查询反向代理、查询真实 es 的两个集群），替换其中的 IP 和 端口即可，应该查的相同的数据
@@ -170,69 +151,70 @@ $ ls -lh *cpu*
 
 | 目标               | TPS  | 损失  |
 |------------------|------|-----|
-| elasticproxy 代理  | 730  | 40% |
-| elasticsearch 原始 | 1200 | -   |
+| elasticproxy 代理  | 800  | 16% |
+| elasticsearch 原始 | 949 | -   |
 
 原始输出：
 
 ```sh
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p3/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv
-Log details to: ./blow_20220524163840_2009974412.log
-Berf benchmarking http://192.168.126.16:2900/p3/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv
+Log details to: ./blow_20220524231005_4199357661.log
+Berf benchmarking http://192.168.126.16:2900/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
 
 Summary:
-Elapsed             4m32.132s
-Count/RPS      200000 734.937
-200               318 1.169
-201          199682 733.768
-ReadWrite    1.781 2.401 Mbps
+Elapsed              4m9.882s
+Count/RPS      200000 800.377
+200               119 0.476
+201          199733 799.308
+429               148 0.592
+ReadWrite    2.410 2.314 Mbps
 Connections               100
 
 Statistics    Min      Mean      StdDev       Max
-Latency   2.773ms  135.869ms  295.123ms  8.665835s
-RPS          1      760.33     406.06     1741.79
+Latency   2.271ms  124.799ms  343.039ms  12.464397s
+RPS         0.2     839.22     536.27     1972.16
 
 Latency Percentile:
-P50          P75        P90       P95        P99       P99.9     P99.99
-82.683ms  126.133ms  223.207ms  379.65ms  1.087599s  4.326544s  8.358918s
+P50          P75        P90        P95        P99       P99.9      P99.99
+58.769ms  106.013ms  229.991ms  427.391ms  1.120094s  2.576986s  12.290779s
 
 Latency Histogram:
-93.919ms   171644  85.82%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-214.442ms   21007  10.50%  ■■■■■
-463.175ms    5095   2.55%  ■
-1.005927s    1509   0.75%
-1.531131s     159   0.08%
-2.972024s     363   0.18%
-6.034726s     222   0.11%
-8.665835s       1   0.00%
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p4/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv
-Log details to: ./blow_20220524164744_758281360.log
-Berf benchmarking http://192.168.126.16:9200/p4/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
+97.964ms    190491  95.25%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+359.422ms     7589   3.79%  ■■
+1.100875s     1580   0.79%
+2.441963s      205   0.10%
+3.853916s       34   0.02%
+4.829915s        1   0.00%
+11.527661s      41   0.02%
+12.241249s      59   0.03%
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv -basic ZWxhc3RpYzoxcWF6WkFRIQ
+Log details to: ./blow_20220524231436_3486091929.log
+Berf benchmarking http://192.168.126.16:9200/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
 
 Summary:
-Elapsed             2m49.982s
-Count/RPS     200000 1176.589
-201         200000 1176.589
-ReadWrite    3.163 3.844 Mbps
+Elapsed             3m30.541s
+Count/RPS      200000 949.930
+201          200000 949.930
+ReadWrite    2.561 3.104 Mbps
 Connections               100
 
-Statistics    Min      Mean     StdDev      Max
-Latency   1.549ms  84.844ms  158.59ms  3.674785s
-RPS         29      1176.3    750.6     3461.79
+Statistics    Min      Mean      StdDev       Max
+Latency   2.202ms  105.049ms  335.548ms  10.858742s
+RPS          5      1025.97    676.64     2770.94
 
 Latency Percentile:
-P50         P75       P90        P95        P99       P99.9     P99.99
-37.976ms  80.54ms  168.923ms  304.081ms  883.682ms  1.545685s  2.553689s
+P50         P75        P90        P95        P99       P99.9      P99.99
+43.063ms  90.998ms  199.931ms  355.327ms  990.902ms  6.665059s  10.631495s
 
 Latency Histogram:
-45.09ms    152119  76.06%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-112.236ms   32954  16.48%  ■■■■■■■■■
-279.471ms   10421   5.21%  ■■■
-595.99ms     3063   1.53%  ■
-1.011403s     998   0.50%
-1.371014s     391   0.20%
-2.274201s      48   0.02%
-3.090254s       6   0.00%
+49.368ms   163622  81.81%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+182.437ms   28178  14.09%  ■■■■■■■
+907.081ms    7730   3.87%  ■■
+1.274057s     255   0.13%
+1.499002s      11   0.01%
+1.73703s      103   0.05%
+2.545036s      88   0.04%
+2.720828s      13   0.01%
 ```

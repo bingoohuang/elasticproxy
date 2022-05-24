@@ -1,12 +1,10 @@
 package util
 
 import (
+	"golang.org/x/exp/constraints"
 	"log"
-	"net/http"
 	"net/url"
 	"path"
-
-	"golang.org/x/exp/constraints"
 )
 
 func JoinURL(base *url.URL, target string) string {
@@ -21,8 +19,6 @@ func JoinURL(base *url.URL, target string) string {
 
 	return b.String()
 }
-
-var Client = &http.Client{}
 
 func InRange[T constraints.Ordered](t, fromIncluded, toExcluded T) bool {
 	return t >= fromIncluded && t < toExcluded

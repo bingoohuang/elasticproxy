@@ -1,19 +1,15 @@
 package rest
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/bingoohuang/gg/pkg/codec"
-	"github.com/bingoohuang/gg/pkg/iox"
 	"github.com/bingoohuang/gg/pkg/ss"
 	"github.com/bingoohuang/jj"
 	"github.com/segmentio/ksuid"
@@ -75,29 +71,28 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 		}()
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, bean.Method, target, io.NopCloser(strings.NewReader(bean.Body)))
-	req.Header = bean.Header
+	header := make(http.Header)
+	for k, kv := range bean.Header {
+		for _, vv := range kv {
+			header.Add(k, vv)
+		}
+	}
 	for k, v := range b.Header {
-		req.Header.Add(k, v)
+		header.Set(k, v)
 	}
 
-	rsp, err := util.TimeoutInvoke(req, b.Timeout)
+	status, rspBody, err := util.TimeoutInvoke(target, bean.Method, header, bean.Body, b.Timeout, nil)
 	if err != nil {
 		log.Printf("E! client do failed: %v", err)
 		return err
 	}
-	status = rsp.StatusCode
 
-	rspBody, err := util.ReadBody(rsp)
-	if err != nil {
-		return err
-	}
-	accessLog.ResponseBody = string(rspBody)
+	accessLog.ResponseBody = rspBody
 
 	return nil
 }
 
-func (b *Rest) InitializePrimary(ctx context.Context) error {
+func (b *Rest) InitializePrimary(_ context.Context) error {
 	u := *b.U
 
 	// https://discuss.elastic.co/t/index-name-type-name-and-field-name-rules/133039
@@ -111,42 +106,32 @@ func (b *Rest) InitializePrimary(ctx context.Context) error {
 	// 6. Cannot be longer than 255 characters
 	u.Path = "/meta.elasticproxy/_doc/clusterid"
 	target := u.String()
-	rsp, err := util.TimeoutGet(ctx, target, b.Timeout, b.Header)
+	_, rsp, err := util.TimeoutGet(target, b.Timeout, b.Header)
 	if err != nil {
 		return err
 	}
 
-	if rsp.Body == nil {
+	if rsp == "" {
 		return fmt.Errorf("no response body")
 	}
 
-	defer iox.Close(rsp.Body)
-
-	data, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return err
-	}
-
-	result := jj.GetBytes(data, "_source.id")
+	result := jj.Get(rsp, "_source.id")
 	if result.Type == jj.String {
 		b.ClusterID = result.String()
 		return nil
 	}
 
 	clusterID := ksuid.New().String()
-	data, _ = json.Marshal(map[string]string{"id": clusterID})
-	post, err := util.TimeoutPost(ctx, target, "application/json",
-		io.NopCloser(bytes.NewReader(data)), b.Timeout, b.Header)
+	data, _ := json.Marshal(map[string]string{"id": clusterID})
+	status, rsp, err := util.TimeoutPost(target, "application/json", data, b.Timeout, b.Header)
 	if err != nil {
 		return err
 	}
 
-	postRspBody, _ := util.ReadBody(post)
-	log.Printf("create ClusterID, StatusCode: %d, postRspBody: %s ", post.StatusCode, postRspBody)
+	log.Printf("create ClusterID, StatusCode: %d, postRspBody: %s ", status, rsp)
 
-	if post.StatusCode != 201 {
-		return fmt.Errorf("failed to create ClusterID at %s, StatusCode: %d, postRspBody: %s ",
-			target, post.StatusCode, postRspBody)
+	if status != 201 {
+		return fmt.Errorf("failed to create ClusterID at %s, StatusCode: %d, postRspBody: %s ", target, status, rsp)
 	}
 	b.ClusterID = clusterID
 	return nil

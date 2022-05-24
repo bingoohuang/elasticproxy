@@ -87,10 +87,11 @@ type Elastic struct {
 type ProxySource struct {
 	Port int
 
-	NoAccessLog bool
-	Disabled    bool
-	Labels      map[string]any
-	Header      map[string]string
+	NoAccessLog       bool
+	Disabled          bool
+	Labels            map[string]any
+	Header            map[string]string
+	PassThroughHeader []string
 }
 
 func (p ProxySource) GetLabels() map[string]any { return p.Labels }

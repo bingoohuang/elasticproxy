@@ -3,10 +3,8 @@ package source
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/bingoohuang/gg/pkg/jsoni"
 
@@ -162,14 +160,19 @@ func (c *consumer) writePrimary(primary rest.Rest, bean model.Bean) {
 	}
 
 	target := util.JoinURL(primary.U, bean.RequestURI)
-	req, _ := http.NewRequestWithContext(c.ctx, bean.Method, target, ioutil.NopCloser(strings.NewReader(bean.Body)))
-	util.CopyHeader(req.Header, bean.Header)
-	rsp, err := util.TimeoutInvoke(req, primary.Timeout)
+
+	header := make(http.Header)
+	for k, kv := range bean.Header {
+		for _, vv := range kv {
+			header.Add(k, vv)
+		}
+	}
+
+	code, data, err := util.TimeoutInvoke(target, bean.Method, header, bean.Body, primary.Timeout, nil)
 	if err != nil {
 		log.Printf("E! rest %s do failed: %v", target, err)
 		return
 	}
 
-	data, _ := util.ReadBody(rsp)
-	log.Printf("rest %s do status: %d, response: %s", target, rsp.StatusCode, jj.Ugly(data))
+	log.Printf("rest %s do status: %d, response: %s", target, code, jj.Ugly([]byte(data)))
 }

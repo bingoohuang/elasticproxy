@@ -1,16 +1,15 @@
 package source
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/valyala/fasthttp"
 
 	"github.com/bingoohuang/gg/pkg/ss"
 
@@ -24,7 +23,7 @@ import (
 type ElasticProxy struct {
 	model.ProxySource
 
-	server    *http.Server
+	server    *fasthttp.Server
 	ctx       context.Context
 	ch        chan<- model.Bean
 	done      chan struct{}
@@ -32,8 +31,7 @@ type ElasticProxy struct {
 }
 
 func (p *ElasticProxy) StartRead(ctx context.Context, primaries []rest.Rest, ch chan<- model.Bean) {
-	addr := fmt.Sprintf(":%d", p.Port)
-	p.server = &http.Server{Addr: addr, Handler: p}
+	p.server = &fasthttp.Server{Handler: p.ServeHTTP}
 	p.ctx = ctx
 	p.ch = ch
 	p.done = make(chan struct{})
@@ -48,40 +46,42 @@ func (p *ElasticProxy) StartRead(ctx context.Context, primaries []rest.Rest, ch 
 			p.ProxySource.Port, p.ProxySource.Labels)
 	}
 
-	if err := p.server.ListenAndServe(); err != nil {
+	addr := fmt.Sprintf(":%d", p.Port)
+	// pass plain function to fasthttp
+	if err := p.server.ListenAndServe(addr); err != nil {
 		log.Printf("E! ListenAndServe failed: %v", err)
 	}
 	p.done <- struct{}{}
 }
 
 func (p *ElasticProxy) StopWait() {
-	if err := p.server.Shutdown(p.ctx); err != nil {
+	if err := p.server.Shutdown(); err != nil {
 		log.Printf("E! shutdown failed: %v", err)
 	}
 	<-p.done
 }
 
 // ServeHTTP only forwards allowed requests to the real ElasticSearch server.
-func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !p.checkHeader(w, r) {
+func (p *ElasticProxy) ServeHTTP(ctx *fasthttp.RequestCtx) {
+	if !p.checkHeader(ctx) {
 		return
 	}
 
 	accessLog := model.AccessLog{
-		RemoteAddr: r.RemoteAddr,
-		Method:     r.Method,
-		Path:       r.URL.Path,
+		RemoteAddr: ctx.RemoteAddr().String(),
+		Method:     string(ctx.Method()),
+		Path:       string(ctx.Path()),
 		Direction:  "primary",
 		StatusCode: http.StatusBadGateway,
 	}
 
-	accessLog.XForwardedFor = w.Header().Get("X-Forwarded-For")
+	accessLog.XForwardedFor = string(ctx.Request.Header.Peek("X-Forwarded-For"))
 
 	startTime := time.Now()
-	rw := &ResponseWriter{ResponseWriter: w}
+	rw := &ResponseWriter{RequestCtx: ctx}
 	defer func() {
 		if !rw.statusCodeWritten {
-			w.WriteHeader(accessLog.StatusCode)
+			ctx.SetStatusCode(accessLog.StatusCode)
 		}
 
 		if !p.NoAccessLog {
@@ -90,37 +90,32 @@ func (p *ElasticProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if w.Header().Get("Upgrade") == "websocket" {
+	if string(ctx.Request.Header.Peek("Upgrade")) == "websocket" {
 		accessLog.StatusCode = http.StatusNotImplemented
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		accessLog.StatusCode = http.StatusInternalServerError
-		return
-	}
+	body := ctx.Request.Body()
 
 	rand.Shuffle(len(p.Primaries), func(i, j int) {
 		p.Primaries[i], p.Primaries[j] = p.Primaries[j], p.Primaries[i]
 	})
 
 	for i, primary := range p.Primaries {
-		p.invoke(rw, r, i == 0, primary, body, &accessLog)
+		p.invoke(rw, i == 0, primary, body, &accessLog)
 	}
 }
 
-func (p *ElasticProxy) checkHeader(w http.ResponseWriter, r *http.Request) bool {
-	header := r.Header
+func (p *ElasticProxy) checkHeader(ctx *fasthttp.RequestCtx) bool {
 	for k, v := range p.Header {
-		if header.Get(k) == v {
+		if string(ctx.Request.Header.Peek(k)) == v {
 			continue
 		}
 
-		w.WriteHeader(http.StatusUnauthorized)
+		ctx.SetStatusCode(http.StatusUnauthorized)
 		switch {
 		case k == "Authorization" && ss.HasPrefix(v, "Basic "):
-			w.Header().Set("WWW-Authenticate", "Basic realm="+strconv.Quote("Authorization Required"))
+			ctx.Response.Header.Set("WWW-Authenticate", "Basic realm="+strconv.Quote("Authorization Required"))
 		default:
 		}
 
@@ -131,20 +126,18 @@ func (p *ElasticProxy) checkHeader(w http.ResponseWriter, r *http.Request) bool 
 }
 
 type ResponseWriter struct {
-	http.ResponseWriter
+	*fasthttp.RequestCtx
 	statusCodeWritten bool
 }
 
 func (r *ResponseWriter) WriteHeader(statusCode int) {
 	r.statusCodeWritten = true
-	r.ResponseWriter.WriteHeader(statusCode)
+	r.RequestCtx.SetStatusCode(statusCode)
 }
 
-func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool, pr rest.Rest,
-	body []byte, accessLog *model.AccessLog,
-) {
+func (p *ElasticProxy) invoke(rw *ResponseWriter, first bool, pr rest.Rest, body []byte, accessLog *model.AccessLog) {
 	if err := model.RetryDo(p.ctx, func() error {
-		p.invokeInternal(w, r, first, pr, body, accessLog)
+		p.invokeInternal(rw, first, pr, body, accessLog)
 		if util.InRange(accessLog.StatusCode, 200, 500) {
 			return nil
 		}
@@ -156,53 +149,74 @@ func (p *ElasticProxy) invoke(w http.ResponseWriter, r *http.Request, first bool
 	return
 }
 
-func (p *ElasticProxy) invokeInternal(w http.ResponseWriter, r *http.Request, first bool, pr rest.Rest,
-	body []byte, accessLog *model.AccessLog,
-) {
-	target := util.JoinURL(pr.U, r.RequestURI)
+func (p *ElasticProxy) invokeInternal(rw *ResponseWriter, first bool, pr rest.Rest, body []byte, accessLog *model.AccessLog) {
+	path := string(rw.Path())
+	target := util.JoinURL(pr.U, path)
 	accessLog.Target = target
-	req, _ := http.NewRequestWithContext(p.ctx, r.Method, target, ioutil.NopCloser(bytes.NewBuffer(body)))
-	req.Header = r.Header
+	method := string(rw.Method())
+	header := make(http.Header)
+
+	rw.Request.Header.VisitAllInOrder(func(k, v []byte) {
+		switch key := string(k); key {
+		case "Content-Type", "Content-Encoding":
+			header.Set(key, string(v))
+		default:
+			if ss.AnyOf(key, p.PassThroughHeader...) {
+				header.Set(key, string(v))
+			}
+		}
+	})
+
 	for k, v := range pr.Header {
-		req.Header.Add(k, v)
+		header.Set(k, v)
 	}
-	rsp, err := util.TimeoutInvoke(req, pr.Timeout)
+
+	var fn func(k, v []byte)
+	if first {
+		fn = func(k, v []byte) {
+			if ss.AnyOf(string(k), "Content-Length", "Content-Encoding") {
+				return
+			}
+
+			rw.RequestCtx.Response.Header.Add(string(k), string(v))
+		}
+	}
+
+	code, rsp, err := util.TimeoutInvoke(target, method, header, string(body), pr.Timeout, fn)
 	if err != nil {
 		log.Printf("E! rest %s do failed: %v", target, err)
 		return
 	}
 
-	accessLog.StatusCode = rsp.StatusCode
-	rspBody, _ := util.ReadBody(rsp)
-	accessLog.ResponseBody = string(rspBody)
+	accessLog.StatusCode = code
+	accessLog.ResponseBody = rsp
 
 	if !first {
-		log.Printf("rest %s status: %d, rsp body: %s", target, accessLog.StatusCode, rspBody)
+		log.Printf("rest %s status: %d, rsp body: %s", target, code, rsp)
 		return
 	}
 
-	if !util.InRange(accessLog.StatusCode, 200, 300) {
+	if !util.InRange(accessLog.StatusCode, 200, 500) {
 		return
 	}
 
-	if !ss.AnyOf(r.Method, "GET", "HEAD") && p.ch != nil {
+	if accessLog.StatusCode < 300 && !ss.AnyOf(method, "GET", "HEAD") && p.ch != nil {
 		rb := model.Bean{
-			Host:       r.Host,
-			RemoteAddr: r.RemoteAddr,
-			Method:     r.Method,
-			RequestURI: r.RequestURI,
+			Host:       string(rw.Host()),
+			RemoteAddr: rw.RemoteAddr().String(),
+			Method:     method,
+			RequestURI: path,
 			Labels:     p.Labels,
 			Body:       string(body),
 			Header:     http.Header{},
 			ClusterIds: []string{pr.ClusterID},
 		}
-		rb.Header.Set("Content-Type", req.Header.Get("Content-Type"))
+		rb.Header.Set("Content-Type", string(rw.Request.Header.Peek("Content-Type")))
 		p.ch <- rb
 	}
 
-	w.WriteHeader(rsp.StatusCode)
-	util.CopyHeader(w.Header(), rsp.Header, util.WithIgnores("Content-Length", "Content-Encoding"))
-	if _, err := w.Write(rspBody); err != nil {
+	rw.WriteHeader(code)
+	if _, err := rw.Write([]byte(rsp)); err != nil {
 		log.Printf("E! write data failed: %v", err)
 	}
 }
