@@ -150,7 +150,7 @@ func (p *ElasticProxy) invoke(rw *ResponseWriter, first bool, pr rest.Rest, body
 }
 
 func (p *ElasticProxy) invokeInternal(rw *ResponseWriter, first bool, pr rest.Rest, body []byte, accessLog *model.AccessLog) {
-	path := string(rw.Path())
+	path := string(rw.URI().RequestURI())
 	target := util.JoinURL(pr.U, path)
 	accessLog.Target = target
 	method := string(rw.Method())
