@@ -6,7 +6,7 @@ go 1.18
 
 require (
 	github.com/Shopify/sarama v1.32.0
-	github.com/bingoohuang/gg v0.0.0-20220509075001-a28861be24c2
+	github.com/bingoohuang/gg v0.0.0-20220527075033-53c4f07e0da6
 	github.com/bingoohuang/golog v0.0.0-20211112131923-101b7e1b3d4c
 	github.com/bingoohuang/jj v0.0.0-20220420012039-8c935d99e5b7
 	github.com/cespare/xxhash/v2 v2.1.1
@@ -58,5 +58,5 @@ require (
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )

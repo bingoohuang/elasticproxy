@@ -188,69 +188,71 @@ Content-Length: 277
 
 | 目标               | TPS  | 损失 |
 | ------------------ | ---- | ---- |
-| elasticproxy 代理  | 994  | 21%  |
-| elasticsearch 原始 | 1243 | -    |
+| elasticproxy 代理  | 1110.994   | 11%  |
+| elasticsearch 原始 | 1399.198 | -    |
+
+观测网络连接数 `watch "netstat -atpn | grep :9200 | grep {pid} | wc -l"`，可以看到压测期间，elasticproxy 代理 到 elasticsearch 原始之间的连接数稳定在 100，符合预期（长连接，会话保持）。
 
 原始输出：
 
 ```sh
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv
-Log details to: ./blow_20220525122730_3129998016.log
-Berf benchmarking http://192.168.126.16:2900/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
-@Real-time charts is on http://127.0.0.1:28888
-
-Summary:
-  Elapsed             3m21.054s
-  Count/RPS      200000 994.754
-    201          200000 994.754
-  ReadWrite    2.992 2.876 Mbps
-  Connections               100
-
-Statistics    Min      Mean      StdDev       Max
-  Latency   2.377ms  100.381ms  170.595ms  4.493463s
-  RPS        14.99    1013.62    490.24     2131.65
-
-Latency Percentile:
-  P50         P75        P90        P95        P99       P99.9     P99.99
-  59.004ms  95.786ms  182.091ms  312.361ms  767.631ms  2.180354s  3.921824s
-
-Latency Histogram:
-  68.052ms   161037  80.52%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-  122.507ms   23972  11.99%  ■■■■■■
-  253.668ms   10678   5.34%  ■■■
-  543.053ms    3022   1.51%  ■
-  832.285ms     488   0.24%
-  1.192596s     443   0.22%
-  2.473703s     357   0.18%
-  4.413259s       3   0.00%
-
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv -basic ZWxhc3RpYzoxcWF6WkFRIQ
-Log details to: ./blow_20220525123804_544368393.log
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv -auth ZWxhc3RpYzoxcWF6WkFRIQ
+Log details to: ./blow_20220527155629_3542801236.log
 Berf benchmarking http://192.168.126.16:9200/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
 
 Summary:
-  Elapsed              2m40.82s
-  Count/RPS     200000 1243.619
-    201         200000 1243.619
-  ReadWrite    3.346 4.063 Mbps
-  Connections               100
+Elapsed             2m22.939s
+Count/RPS     200000 1399.198
+201         200000 1399.198
+ReadWrite    3.774 4.571 Mbps
+Connections               100
 
 Statistics    Min      Mean     StdDev       Max
-  Latency   2.132ms  80.127ms  166.895ms  9.815577s
-  RPS          1     1256.94    726.85     3077.22
+Latency   2.217ms  71.299ms  273.114ms  11.617517s
+RPS        87.01   1494.32    721.85     3030.97
 
 Latency Percentile:
-  P50         P75        P90        P95        P99       P99.9     P99.99
-  40.062ms  70.853ms  145.358ms  277.988ms  771.026ms  2.279913s  3.824882s
+P50         P75        P90       P95        P99       P99.9      P99.99
+37.043ms  64.267ms  125.635ms  208.65ms  579.017ms  1.526334s  11.397509s
 
 Latency Histogram:
-  37.648ms   129348  64.67%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-  90.367ms    52619  26.31%  ■■■■■■■■■■■■■■■■
-  212.354ms   13074   6.54%  ■■■■
-  491.108ms    3388   1.69%  ■
-  1.009199s    1181   0.59%
-  1.894028s     382   0.19%
-  3.300352s       5   0.00%
-  9.548468s       3   0.00%
+46.373ms    166357  83.18%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+99.684ms     24422  12.21%  ■■■■■■
+206.209ms     5981   2.99%  ■
+507.83ms      2595   1.30%  ■
+746.348ms      448   0.22%
+921.397ms       74   0.04%
+9.388871s      122   0.06%
+11.617517s       1   0.00%
+
+[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv
+Log details to: ./blow_20220527155904_3829225044.log
+Berf benchmarking http://192.168.126.16:2900/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
+@Real-time charts is on http://127.0.0.1:28888
+
+Summary:
+Elapsed              3m0.018s
+Count/RPS     200000 1110.994
+201         200000 1110.994
+ReadWrite    3.342 3.212 Mbps
+Connections               100
+
+Statistics    Min      Mean     StdDev       Max
+Latency   2.733ms  89.883ms  149.395ms  3.637019s
+RPS        35.01   1122.11    533.63     2147.45
+
+Latency Percentile:
+P50         P75        P90        P95       P99       P99.9     P99.99
+55.435ms  85.651ms  148.403ms  250.402ms  798.82ms  1.579418s  3.381517s
+
+Latency Histogram:
+59.748ms   162295  81.15%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+143.142ms   31360  15.68%  ■■■■■■■■
+410.403ms    4297   2.15%  ■
+748.614ms    1422   0.71%
+996.066ms     262   0.13%
+1.318155s     191   0.10%
+2.590528s     171   0.09%
+3.632266s       2   0.00%
 ```

@@ -84,7 +84,7 @@ $ gurl GET 192.168.112.67:9200/person/_search size=1 -pb q=赫连菴嘗 | jj hit
 2. run performance: `BLOW_STATUS=-201 berf 192.168.126.16:9200/person/_doc/@ksuid -b persons.txt:line  -opt eval,json`
 
 ```sh
-[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.112.67:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
+[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.112.67:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -auth ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
 Log details to: ./blow_20220524140203_1054048039.log
 Berf benchmarking http://192.168.112.67:9200/p1/_doc/@ksuid using 100 goroutine(s), 10 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
@@ -113,7 +113,7 @@ Latency Histogram:
   479.66ms    155   1.55%  ■■
   552.677ms    12   0.12%
   791.933ms     6   0.06%
-[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
+[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -auth ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
 Log details to: ./blow_20220524140329_66237848.log
 Berf benchmarking http://192.168.126.16:9200/p1/_doc/@ksuid using 100 goroutine(s), 10 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
@@ -142,7 +142,7 @@ Latency Histogram:
   610.73ms    151   1.51%  ■■
   854.449ms    30   0.30%
   977.429ms     1   0.01%
-[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p2/_doc/@ksuid -b persons.txt:line  -opt eval,json -basic ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
+[footstone@fs03-192-168-126-18 ~]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p2/_doc/@ksuid -b persons.txt:line  -opt eval,json -auth ZWxhc3RpYzoxcWF6WkFRIQ -vv -c100 -t10
 Log details to: ./blow_20220524140353_2840828187.log
 Berf benchmarking http://192.168.126.16:2900/p2/_doc/@ksuid using 100 goroutine(s), 10 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
