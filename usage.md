@@ -186,10 +186,10 @@ Content-Length: 277
 
 20 万单条 POST 数据压测结果
 
-| 目标               | TPS  | 损失 |
-| ------------------ | ---- | ---- |
-| elasticproxy 代理  | 1110.994   | 11%  |
-| elasticsearch 原始 | 1399.198 | -    |
+| 目标               | TPS      | 损失  |
+|------------------|----------|-----|
+| elasticproxy 代理  | 1110.994 | 11% |
+| elasticsearch 原始 | 1399.198 | -   |
 
 观测网络连接数 `watch "netstat -atpn | grep :9200 | grep {pid} | wc -l"`，可以看到压测期间，elasticproxy 代理 到 elasticsearch 原始之间的连接数稳定在 100，符合预期（长连接，会话保持）。
 
