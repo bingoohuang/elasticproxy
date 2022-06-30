@@ -8,7 +8,7 @@ source:
   proxies:
     - port: 2900
       disabled: false
-      noaccesslog: true
+      accesslog: false
       header: # check auth header
         # Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
         #es-secondary-authorization: Basic <TOKEN> # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
@@ -19,7 +19,7 @@ source:
   kafkas:
     - version: 2.5.1
       disabled: false
-      noaccesslog: true
+      accesslog: false
       brokers:
         - localhost:9092
       # kafka消费者主题列表
@@ -39,7 +39,7 @@ destination:
   primaries:
     - url: http://127.0.0.1:9200/
       timeout: 3s
-      noaccesslog: true
+      accesslog: false
       labelEval: SRC==PROXY || SRC==KAFKA
       header:
         Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
@@ -61,7 +61,7 @@ destination:
       version: 2.5.1
       # gzip snappy lz4 zstd
       codec: none
-      async: false
+      sync: false
       # NoResponse/WaitForLocal/WaitForAll default WaitForLocal
       requiredAcks: WaitForLocal
       brokers:

@@ -19,14 +19,14 @@ type Kafka struct {
 	producer *Producer
 	util.LabelsMatcher
 
-	Async        bool
+	Sync         bool
 	RequiredAcks string
 }
 
 func (d *Kafka) Hash() string { return util.Hash(d.Brokers...) }
 func (d *Kafka) Name() string { return fmt.Sprintf("kafka") }
 
-func (d *Kafka) Initialize(context.Context) error {
+func (d *Kafka) Initialize(ctx context.Context) error {
 	var err error
 	d.LabelsMatcher, err = util.ParseLabelsExpr(d.LabelEval)
 	if err != nil {
@@ -44,11 +44,12 @@ func (d *Kafka) Initialize(context.Context) error {
 	// <data-center>.<domain>.<classification>.<description>.<version>
 
 	kc := &ProducerConfig{
+		Context:      ctx,
 		Topic:        ss.Or(d.Topic, "elastic.sync"),
 		Version:      d.Version,
 		Brokers:      d.Brokers,
 		Codec:        d.Codec,
-		Async:        d.Async,
+		Sync:         d.Sync,
 		RequiredAcks: util.ParseRequiredAcks(d.RequiredAcks),
 	}
 	producer, err := kc.NewSyncProducer()
@@ -68,7 +69,7 @@ func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 	vLen := len(vv)
 
 	prefix := ""
-	if !d.NoAccessLog {
+	if d.AccessLog {
 		if d.WarnSize > 0 && vLen >= d.WarnSize {
 			prefix = "W!"
 		} else {
@@ -83,7 +84,7 @@ func (d *Kafka) Write(ctx context.Context, bean model.Bean) error {
 		return fmt.Errorf("failed to publish len: %d, error %w, message: %s", vLen, err, vv)
 	}
 
-	if !d.NoAccessLog {
+	if d.AccessLog {
 		log.Printf("%s kafka.produce result %j", prefix, jsoni.AsClearJSON(rsp))
 	}
 	return nil
@@ -98,10 +99,11 @@ type ProducerConfig struct {
 	Version string
 	Brokers []string
 	Codec   string
-	Async   bool
+	Sync    bool
 	sarama.RequiredAcks
 
 	model.TlsConfig
+	context.Context
 }
 
 type PublishResponse struct {
@@ -195,6 +197,7 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 	sc.Producer.RequiredAcks = c.RequiredAcks
 	sc.Producer.Retry.Max = 3 // Retry up to x times to produce the message
 	sc.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
+	sc.Producer.Return.Successes = true
 	if tc := c.TlsConfig.Create(); tc != nil {
 		sc.Net.TLS.Config = tc
 		sc.Net.TLS.Enable = true
@@ -204,9 +207,7 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 	// stronger consistency guarantees:
 	// - For your broker, set `unclean.leader.election.enable` to false
 	// - For the topic, you could increase `min.insync.replicas`.
-	if !c.Async {
-		// Producer.Return.Successes must be true to be used in a SyncProducer
-		sc.Producer.Return.Successes = true
+	if c.Sync {
 		p, err := sarama.NewSyncProducer(c.Brokers, sc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to start Sarama SyncProducer, %w", err)
@@ -214,7 +215,6 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 		return &Producer{kafkaProducer: &syncProducer{Producer: p}}, nil
 	}
 
-	sc.Producer.Return.Successes = false
 	sc.Producer.Return.Errors = true
 	p, err := sarama.NewAsyncProducer(c.Brokers, sc)
 	if err != nil {
@@ -223,8 +223,14 @@ func (c ProducerConfig) NewSyncProducer() (*Producer, error) {
 	// We will just log to STDOUT if we're not able to produce messages.
 	// Note: messages will only be returned here after all retry attempts are exhausted.
 	go func() {
-		for err := range p.Errors() {
-			log.Println("Failed to write access log entry:", err)
+		for {
+			select {
+			case <-c.Context.Done():
+				return
+			case <-p.Successes():
+			case err := <-p.Errors():
+				log.Println("Failed to write access log entry:", err)
+			}
 		}
 	}()
 

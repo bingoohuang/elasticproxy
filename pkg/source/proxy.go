@@ -84,7 +84,7 @@ func (p *ElasticProxy) ServeHTTP(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(accessLog.StatusCode)
 		}
 
-		if !p.NoAccessLog {
+		if p.AccessLog {
 			accessLog.Duration = time.Now().Sub(startTime).String()
 			log.Printf("access log: %s", codec.Json(accessLog))
 		}

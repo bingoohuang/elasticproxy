@@ -77,17 +77,17 @@ func RetryDo(ctx context.Context, f func() error) error {
 type Elastic struct {
 	URL string
 
-	NoAccessLog bool
-	Disabled    bool
-	LabelEval   string
-	Timeout     time.Duration
-	Header      map[string]string
+	AccessLog bool
+	Disabled  bool
+	LabelEval string
+	Timeout   time.Duration
+	Header    map[string]string
 }
 
 type ProxySource struct {
 	Port int
 
-	NoAccessLog       bool
+	AccessLog         bool
 	Disabled          bool
 	Labels            map[string]any
 	Header            map[string]string
@@ -118,9 +118,9 @@ type KafkaDestination struct {
 	Codec    string
 	WarnSize int
 
-	NoAccessLog bool
-	Disabled    bool
-	LabelEval   string
+	AccessLog bool
+	Disabled  bool
+	LabelEval string
 }
 
 type Config struct {

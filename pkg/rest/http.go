@@ -62,7 +62,7 @@ func (b *Rest) Write(ctx context.Context, bean model.Bean) error {
 	}
 	startTime := time.Now()
 
-	if !b.NoAccessLog {
+	if b.AccessLog {
 		defer func() {
 			accessLog.Duration = time.Now().Sub(startTime).String()
 			accessLog.StatusCode = status
