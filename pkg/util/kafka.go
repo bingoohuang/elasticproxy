@@ -52,3 +52,17 @@ func ParseBalanceStrategy(assignor string) sarama.BalanceStrategy {
 		return sarama.BalanceStrategyRange
 	}
 }
+
+func ParseRequiredAcks(acks string) sarama.RequiredAcks {
+	acks = strings.ToLower(acks)
+	switch acks {
+	case "waitforlocal":
+		return sarama.WaitForLocal
+	case "noresponse":
+		return sarama.NoResponse
+	case "waitforall":
+		return sarama.WaitForAll
+	default:
+		return sarama.WaitForLocal
+	}
+}

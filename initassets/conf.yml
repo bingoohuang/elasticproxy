@@ -61,5 +61,8 @@ destination:
       version: 2.5.1
       # gzip snappy lz4 zstd
       codec: none
+      async: false
+      # NoResponse/WaitForLocal/WaitForAll default WaitForLocal
+      requiredAcks: WaitForLocal
       brokers:
         - localhost:9092

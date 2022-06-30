@@ -57,7 +57,7 @@ elasticproxy 通过反向代理和 kafka 对象，提供两个 elasticsearch 集
 通过反向代理，写入数据： `gurl -b '{"addr":"@地址","idcard":"@身份证","name":"@姓名","sex":"@性别"}' http://192.168.126.16:2900/test1/_doc/@ksuid`
 
 ```sh
-[footstone@fs02-192-168-126-16 bingoo]$ gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/_doc/@ksuid -raw -pa
+# gurl 'name=@姓名' 'sex=@random(男,女)' 'addr=@地址' 'idcard=@身份证' -ugly :2900/person/_doc/@ksuid -raw -pa
 Conn-Session: 127.0.0.1:29492->127.0.0.1:2900 (reused: false, wasIdle: false, idle: 0s)
 POST /person/_doc/29drIbdJSxhDAGoe8LbuDWCxK4j HTTP/1.1
 Host: 127.0.0.1:2900
@@ -91,7 +91,7 @@ Location: /person/_doc/29drIbdJSxhDAGoe8LbuDWCxK4j
 查询数据（查询反向代理、查询真实 es 的两个集群），替换其中的 IP 和 端口即可，应该查的相同的数据
 
 ```sh
-[footstone@fs02-192-168-126-16 bingoo]$ gurl :9200/person/_doc/29drIbdJSxhDAGoe8LbuDWCxK4j -auth ZWxhc3RpYzoxcWF6WkFRIQ
+# gurl :9200/person/_doc/29drIbdJSxhDAGoe8LbuDWCxK4j -auth ZWxhc3RpYzoxcWF6WkFRIQ
 Conn-Session: 127.0.0.1:2497->127.0.0.1:9200 (reused: false, wasIdle: false, idle: 0s)
 GET /person/_doc/29drIbdJSxhDAGoe8LbuDWCxK4j HTTP/1.1
 Host: 127.0.0.1:9200
@@ -141,26 +141,26 @@ Content-Length: 277
 1. 进入目标工作目录（ctl 和 conf.yml 所在的目录)
 
    ```sh
-   $ cd elasticproxy/
-   $ pwd
+   # cd elasticproxy/
+   # pwd
    /home/footstone/elasticproxy
-   $ ls
+   # ls
    conf.yml  cpu.profile  ctl  var
    ```
 
 2. 查看当前进程运行状态（中间有 PID）
 
    ```sh
-   $ ./ctl status
+   # ./ctl status
    elasticproxy started, pid=14008
    ```
 
 3. 通知采集 5 分钟之内的进程运行信息，注意下面的 `$pid` 请换成上面的实际值，比如 `14008`，同时可以使用 `./ctl tail` 查看最新的日志
 
    ```sh
-   $ echo 5m > jj.cpu
-   $ kill -USR1 $pid
-   $ ./ctl tail
+   # echo 5m > jj.cpu
+   # kill -USR1 $pid
+   # ./ctl tail
    2022-05-24 14:36:16.777 [INFO ] 14008 --- [20   ] [-]  : cpu.profile started
    2022-05-24 14:36:16.777 [INFO ] 14008 --- [20   ] [-]  : after 5m, cpu.profile will be generated
    ...
@@ -175,7 +175,7 @@ Content-Length: 277
 4. 运行压力测试，或者等待（最好是在系统有业务负载的时候）5 分钟，查看生成的 `cpu.profile` 文件的大小
 
    ```sh
-   $ ls -lh *cpu*
+   # ls -lh *cpu*
    -rw-rw-rw- 1 footstone footstone 61K 5月  24 14:19 cpu.profile
    ```
 
@@ -193,10 +193,16 @@ Content-Length: 277
 
 观测网络连接数 `watch "netstat -atpn | grep :9200 | grep {pid} | wc -l"`，可以看到压测期间，elasticproxy 代理 到 elasticsearch 原始之间的连接数稳定在 100，符合预期（长连接，会话保持）。
 
+数据准备：
+
+```sh
+# JJ_N=200000 jj -gu name=@姓名 'sex=@random(男,女)' addr=@地址 idcard=@身份证 > p20w.txt
+```
+
 原始输出：
 
 ```sh
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:9200/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv -auth ZWxhc3RpYzoxcWF6WkFRIQ
+# BLOW_STATUS=-201 berf 192.168.126.16:9200/p1/_doc/@ksuid -b p20w.txt:line  -opt eval,json -vv -auth ZWxhc3RpYzoxcWF6WkFRIQ
 Log details to: ./blow_20220527155629_3542801236.log
 Berf benchmarking http://192.168.126.16:9200/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
@@ -226,7 +232,7 @@ Latency Histogram:
 9.388871s      122   0.06%
 11.617517s       1   0.00%
 
-[footstone@fs02-192-168-126-16 bingoo]$ BLOW_STATUS=-201  berf 192.168.126.16:2900/p1/_doc/@ksuid -b persons.txt:line  -opt eval,json -vv
+# BLOW_STATUS=-201 berf 192.168.126.16:2900/p1/_doc/@ksuid -b p20w.txt:line  -opt eval,json -vv
 Log details to: ./blow_20220527155904_3829225044.log
 Berf benchmarking http://192.168.126.16:2900/p1/_doc/@ksuid using 100 goroutine(s), 12 GoMaxProcs.
 @Real-time charts is on http://127.0.0.1:28888
