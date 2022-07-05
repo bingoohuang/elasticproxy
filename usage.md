@@ -186,10 +186,10 @@ Content-Length: 277
 
 20 万单条 POST 数据压测结果
 
-| 目标               | TPS      | 损失  |
-|------------------|----------|-----|
-| elasticproxy 代理  | 1110.994 | 11% |
-| elasticsearch 原始 | 1399.198 | -   |
+| 目标               | TPS      | 损失 |
+|------------------|----------|------|
+| elasticproxy 代理  | 1110.994 | 11%  |
+| elasticsearch 原始 | 1399.198 | -    |
 
 观测网络连接数 `watch "netstat -atpn | grep :9200 | grep {pid} | wc -l"`，可以看到压测期间，elasticproxy 代理 到 elasticsearch 原始之间的连接数稳定在 100，符合预期（长连接，会话保持）。
 
@@ -261,4 +261,136 @@ Latency Histogram:
 1.318155s     191   0.10%
 2.590528s     171   0.09%
 3.632266s       2   0.00%
+```
+
+## 压测机压测数据
+
+```sh
+[root@localhost ~]# sysinfo -format json -show host | jj
+{
+  "OS": "linux",
+  "HostInfo": {
+    "Hostname": "localhost.localdomain",
+    "Uptime": 601381,
+    "UptimeHuman": "6 days",
+    "Procs": 414,
+    "OS": "linux",
+    "Platform": "centos",
+    "HostID": "00000000-0000-0000-0000-002590c24096",
+    "PlatformVersion": "7.5.1804",
+    "KernelVersion": "3.10.0-862.el7.x86_64",
+    "KernelArch": "x86_64",
+    "OsRelease": "NAME=\"CentOS Linux\" VERSION=\"7 (Core)\"",
+    "MemAvailable": "45.91GiB/62.73GiB, 00.73%",
+    "NumCPU": 32,
+    "CpuMhz": 3300,
+    "CpuModel": "Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz"
+  }
+}
+```
+
+```yml
+#[root@localhost esproxytest]# cat /opt/elasticproxy/conf.yml
+---
+
+# 备份请求缓冲区大小，0 时阻塞
+chanSize: 2048
+
+source:
+
+  proxies:
+    - port: 2900
+
+destination:
+
+  primaries:
+    - url: http://192.168.126.222:9200/
+      timeout: 3s
+      header:
+        Authorization: Basic c2NvdHQ6dGlnZXI= # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: Basic <TOKEN> # The <TOKEN> is computed as base64(USERNAME:PASSWORD)
+        #es-secondary-authorization: ApiKey <TOKEN> # The <TOKEN> is computed as base64(API key ID:API key)
+
+  kafkas:
+    - topic: elastic.backup
+      version: 2.7.2
+#      disabled: true
+      codec: none
+      sync: false
+      brokers:
+        - 192.168.126.200:9092
+        - 192.168.126.200:9192
+        - 192.168.126.200:9292
+```
+
+压测结果 | 直连 elasticsearch | 连接 elasticproxy + kafka(async)
+---------|--------------------|--------------------------------
+TPS      | 12071              | 15253
+
+### 直连 elasticsearch 压测结果
+
+```sh
+[root@localhost esproxytest]# BLOW_STATUS=-201 berf 192.168.126.222:9200/p1/_doc -b p20w.txt:line  -opt eval,json -vv -auth c2NvdHQ6dGlnZXI
+Log details to: ./blow_20220701014905_2472593851.log
+Berf benchmarking http://192.168.126.222:9200/p1/_doc using 100 goroutine(s), 32 GoMaxProcs.
+@Real-time charts is on http://127.0.0.1:28888
+
+Summary:
+  Elapsed                 16.568s
+  Count/RPS      200000 12071.381
+    201          200000 12071.381
+  ReadWrite    31.114 36.064 Mbps
+  Connections                 100
+
+Statistics    Min      Mean    StdDev      Max
+  Latency   1.139ms  8.174ms   7.079ms  1.722797s
+  RPS       9780.67  12014.57  1463.03  13947.46
+
+Latency Percentile:
+  P50       P75      P90       P95       P99      P99.9    P99.99
+  7.17ms  9.002ms  12.793ms  15.808ms  22.522ms  42.31ms  51.322ms
+
+Latency Histogram:
+  2.932ms      2134   1.07%
+  7.465ms    178464  89.23%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  12.784ms    14127   7.06%  ■■■
+  18.454ms     3649   1.82%  ■
+  26.166ms     1452   0.73%
+  31.435ms       60   0.03%
+  61.853ms      113   0.06%
+  1.562749s       1   0.00%
+```
+
+### 连 elasticproxy 压测结果
+
+```sh
+[root@localhost esproxytest]# BLOW_STATUS=-201 berf :2900/p1/_doc -b p20w.txt:line  -opt eval,json -vv
+Log details to: ./blow_20220701014838_3701546041.log
+Berf benchmarking http://127.0.0.1:2900/p1/_doc using 100 goroutine(s), 32 GoMaxProcs.
+@Real-time charts is on http://127.0.0.1:28888
+
+Summary:
+  Elapsed                 13.111s
+  Count/RPS      200000 15253.521
+    201          200000 15253.521
+  ReadWrite    44.296 40.080 Mbps
+  Connections                 100
+
+Statistics    Min       Mean    StdDev      Max
+  Latency   1.301ms   6.456ms   3.483ms  988.964ms
+  RPS       12052.16  15274.48  1110.53  16268.07
+
+Latency Percentile:
+  P50        P75      P90      P95       P99      P99.9     P99.99
+  6.002ms  7.151ms  8.735ms  10.508ms  16.083ms  32.187ms  63.162ms
+
+Latency Histogram:
+  5.301ms   118596  59.30%  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  7.122ms    62182  31.09%  ■■■■■■■■■■■■■■■■■■■■■
+  9.061ms    11359   5.68%  ■■■■
+  12.706ms    5305   2.65%  ■■
+  17.629ms    2039   1.02%  ■
+  21.128ms     386   0.19%
+  25.413ms      31   0.02%
+  43.747ms     102   0.05%
 ```
